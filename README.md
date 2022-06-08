@@ -4,7 +4,7 @@ This is the code being used for the Agent Based Model (ABM).
 
 ### Abstract
 
-<strong? An Agent-Based Model of Environmental Transmission of C. difficile in Healthcare Settings </strong>
+<strong> An Agent-Based Model of Environmental Transmission of C. difficile in Healthcare Settings </strong>
 
 Clostridioides difficile (C. difficile) is one of the most frequently identified healthcare-acquired infections in United States hospitals. Colonized patients, both symptomatic and asymptomatic, shed C. difficile endospores that can survive for long periods on surfaces outside the host and are resistant to many commonly-used disinfectants. Transmission pathways can include contact with endospores on fomites, objects likely to carry infection. 
 
