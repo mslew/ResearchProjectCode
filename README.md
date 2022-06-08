@@ -2,7 +2,7 @@
 
 This is the code being used for the Agent Based Model (ABM). 
 
-### Abstract
+## Abstract
 
 <strong> An Agent-Based Model of Environmental Transmission of C. difficile in Healthcare Settings </strong>
 
