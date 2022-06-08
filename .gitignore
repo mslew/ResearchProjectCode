@@ -1,3 +1,3 @@
 #Temp files
-.tmp.nlogo
-.DS_STORE
+*.tmp.nlogo
+*.DS_STORE
