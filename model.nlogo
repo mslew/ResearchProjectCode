@@ -1,30 +1,68 @@
 globals[
  rooms
  patients
+ high-touch
+ low-touch
 ]
 
 to setup
   set rooms []
+  set patients []
+  set high-touch []
+  set low-touch []
 
+  ;set all patches to black
   ask patches [set pcolor 0]
+
+  ;create white divisions for the rooms
   ask patches [if (pycor = -10 or pycor = -6  or pycor = -2  or pycor = 2 or pycor = 6 or pycor = 10) [set pcolor 9.9]] ;horizontal white lines
   ask patches [if (pxcor = -12 or pxcor = -8  or pxcor = -4 or pxcor = 0 or pxcor = 4 or pxcor = 8 or pxcor = 12) [set pcolor 9.9]] ;vertical white lines
-  set rooms patches with [pcolor = 0] ;set rooms that are in the black
+
+  ;set remaining black patches to our rooms
+  set rooms patches with [pcolor = 0]
+
+  ;create blue divisions within the rooms
   ask rooms[
     if (pycor = -8 or pycor = -4 or pycor = 0 or pycor = 4  or pycor = 8) [set pcolor blue] ;setting the divisions within the roooms
     if (pxcor = -10  or pxcor = -6 or pxcor = -2 or pxcor = 2  or pxcor = 6 or pxcor = 10) [set pcolor blue] ;setting divisions within the rooms
-
   ]
+
+  ;block of code for patients in rooms
+  ask patches [if (pycor = 9 and (pxcor = -11 or pxcor = -7 or pxcor = -3 or pxcor = 1 or pxcor = 5 or pxcor = 9)) [set pcolor green]] ;set top row of rooms patient color green
+  ask patches [if (pycor = 5 and (pxcor = -11 or pxcor = -7 or pxcor = -3 or pxcor = 1 or pxcor = 5 or pxcor = 9)) [set pcolor green]] ;set second row of rooms patient color green
+  ask patches [if (pycor = 1 and (pxcor = -11 or pxcor = -7 or pxcor = -3 or pxcor = 1 or pxcor = 5 or pxcor = 9)) [set pcolor green]] ;set third row of rooms patient color green
+  ask patches [if (pycor = -3  and (pxcor = -11 or pxcor = -7 or pxcor = -3 or pxcor = 1 or pxcor = 5 or pxcor = 9)) [set pcolor green]] ;set fourth row of rooms patient color green
+  ask patches [if (pycor = -7  and (pxcor = -11 or pxcor = -7 or pxcor = -3 or pxcor = 1 or pxcor = 5 or pxcor = 9)) [set pcolor green]] ;set fifth row of rooms patient color green
+
+  ;block of code for high-touch surfaces in rooms
+  ask patches [if (pycor = 9 and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor red]] ;set top row of rooms high-touch color red
+  ask patches [if (pycor = 5 and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor red]] ;set second row of rooms high-touch color red
+  ask patches [if (pycor = 1 and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor red]] ;set third row of rooms high-touch color red
+  ask patches [if (pycor = -3  and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor red]] ;set fourth row of rooms high-touch color red
+  ask patches [if (pycor = -7  and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor red]] ;set fifth row of rooms high-touch color red
+
+  ;block of code for low-touch surfaces in rooms
+  ask patches [if (pycor = 7 and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor yellow]] ;set top row of rooms low-touch color yellow
+  ask patches [if (pycor = 3 and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor yellow]] ;set second row of rooms low-touch color yellow
+  ask patches [if (pycor = -1 and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor yellow]] ;set third row of rooms low-touch color yellow
+  ask patches [if (pycor = -5  and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor yellow]] ;set fourth row of rooms low-touch color yellow
+  ask patches [if (pycor = -9  and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor yellow]] ;set fifth row of rooms low-touch color yellow
+
+  ;set variables using the colors
+  set patients patches with [pcolor = green]
+  set high-touch patches with [pcolor = red]
+  set low-touch patches with [pcolor = yellow]
+
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
-10
-855
-554
+204
+26
+682
+430
 -1
 -1
-56.3
+18.81
 1
 10
 1
