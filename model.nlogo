@@ -14,7 +14,17 @@ to setup
   ;set all patches to black
   ask patches [set pcolor 0]
 
-  ;create white divisions for the rooms
+  ;creation sub-models
+  create-rooms
+  create-patients
+  create-high-touch
+  create-low-touch
+  set-patches
+end
+
+;submodel to create rooms and divisions
+to create-rooms
+   ;create white divisions for the rooms
   ask patches [if (pycor = -10 or pycor = -6  or pycor = -2  or pycor = 2 or pycor = 6 or pycor = 10) [set pcolor 9.9]] ;horizontal white lines
   ask patches [if (pxcor = -12 or pxcor = -8  or pxcor = -4 or pxcor = 0 or pxcor = 4 or pxcor = 8 or pxcor = 12) [set pcolor 9.9]] ;vertical white lines
 
@@ -26,33 +36,40 @@ to setup
     if (pycor = -8 or pycor = -4 or pycor = 0 or pycor = 4  or pycor = 8) [set pcolor blue] ;setting the divisions within the roooms
     if (pxcor = -10  or pxcor = -6 or pxcor = -2 or pxcor = 2  or pxcor = 6 or pxcor = 10) [set pcolor blue] ;setting divisions within the rooms
   ]
+end
 
-  ;block of code for patients in rooms
+;sub-model for patients in rooms
+to create-patients
   ask patches [if (pycor = 9 and (pxcor = -11 or pxcor = -7 or pxcor = -3 or pxcor = 1 or pxcor = 5 or pxcor = 9)) [set pcolor green]] ;set top row of rooms patient color green
   ask patches [if (pycor = 5 and (pxcor = -11 or pxcor = -7 or pxcor = -3 or pxcor = 1 or pxcor = 5 or pxcor = 9)) [set pcolor green]] ;set second row of rooms patient color green
   ask patches [if (pycor = 1 and (pxcor = -11 or pxcor = -7 or pxcor = -3 or pxcor = 1 or pxcor = 5 or pxcor = 9)) [set pcolor green]] ;set third row of rooms patient color green
   ask patches [if (pycor = -3  and (pxcor = -11 or pxcor = -7 or pxcor = -3 or pxcor = 1 or pxcor = 5 or pxcor = 9)) [set pcolor green]] ;set fourth row of rooms patient color green
   ask patches [if (pycor = -7  and (pxcor = -11 or pxcor = -7 or pxcor = -3 or pxcor = 1 or pxcor = 5 or pxcor = 9)) [set pcolor green]] ;set fifth row of rooms patient color green
+end
 
-  ;block of code for high-touch surfaces in rooms
+;sub-model for high-touch surfaces in rooms
+to create-high-touch
   ask patches [if (pycor = 9 and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor red]] ;set top row of rooms high-touch color red
   ask patches [if (pycor = 5 and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor red]] ;set second row of rooms high-touch color red
   ask patches [if (pycor = 1 and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor red]] ;set third row of rooms high-touch color red
   ask patches [if (pycor = -3  and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor red]] ;set fourth row of rooms high-touch color red
   ask patches [if (pycor = -7  and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor red]] ;set fifth row of rooms high-touch color red
+end
 
-  ;block of code for low-touch surfaces in rooms
-  ask patches [if (pycor = 7 and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor yellow]] ;set top row of rooms low-touch color yellow
-  ask patches [if (pycor = 3 and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor yellow]] ;set second row of rooms low-touch color yellow
-  ask patches [if (pycor = -1 and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor yellow]] ;set third row of rooms low-touch color yellow
-  ask patches [if (pycor = -5  and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor yellow]] ;set fourth row of rooms low-touch color yellow
-  ask patches [if (pycor = -9  and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor yellow]] ;set fifth row of rooms low-touch color yellow
+;sub-model for low-touch surfaces in rooms
+to create-low-touch
+  ask patches [if (pycor = 7 and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor orange]] ;set top row of rooms low-touch color orange
+  ask patches [if (pycor = 3 and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor orange]] ;set second row of rooms low-touch color orange
+  ask patches [if (pycor = -1 and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor orange]] ;set third row of rooms low-touch color orange
+  ask patches [if (pycor = -5  and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor orange]] ;set fourth row of rooms low-touch color orange
+  ask patches [if (pycor = -9  and (pxcor = -9 or pxcor = -5 or pxcor = -1 or pxcor = 3 or pxcor = 7 or pxcor = 11)) [set pcolor orange]] ;set fifth row of rooms low-touch color orange
+end
 
-  ;set variables using the colors
+;sub-model to set variables using the colors
+to set-patches
   set patients patches with [pcolor = green]
   set high-touch patches with [pcolor = red]
   set low-touch patches with [pcolor = yellow]
-
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
