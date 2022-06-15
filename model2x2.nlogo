@@ -75,10 +75,11 @@ to set-colors
   set hallways patches with [pcolor = white]
 end
 
+;set up 10 HCW agents in hallways
 to set-initial-HCW
   let initial-healthcare 10
   create-HCWs initial-healthcare[
-   set size .59
+   set size .75
    set color black
    set shape "person"
    move-to one-of hallways
