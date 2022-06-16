@@ -1,19 +1,11 @@
 breed [patients patient]
 breed [HCWs HCW]
 
-HCWs-own [
-
-]
-
-turtles-own[
-
-]
-
 globals[
   patients-patch ;;patches identifying patients
   high-touch ;;patches identifying high-touch frequency surfaces
   low-touch ;;patches identifying low-touch frequency surfaces
-  hallways
+  hallways ;hallways patches
 ]
 
 to setup
@@ -22,7 +14,8 @@ to setup
   low-touch-setup ;;creates a patch in each room that identifies as the low-touch surfaces
   high-touch-setup ;;creates a patch in each room that identifies as the high-touch surfaces
   set-colors ;;sets all the globals to the corresponding color
-  set-initial-HCW
+  set-initial-HCW ;sets initial HCW
+  set-initial-patients ; sets inital patients
 end
 
 ;sets background yellow(room space color) and creates the hallways between them
@@ -82,11 +75,20 @@ to set-initial-HCW
    set size .75
    set color black
    set shape "person"
-   move-to one-of hallways
+   move-to one-of hallways with [not any? HCWs-here]
   ]
 end
 
-
+;set up 30 initial patients
+to set-initial-patients
+  let initial-patients 30
+  create-patients initial-patients[
+   set size .75
+   set color white
+   set shape "person"
+   move-to one-of patients-patch with [not any? patients-here]
+  ]
+end
 
 
 
