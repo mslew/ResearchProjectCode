@@ -6,21 +6,29 @@ globals[
   high-touch ;;patches identifying high-touch frequency surfaces
   low-touch ;;patches identifying low-touch frequency surfaces
   hallways ;hallways patches
+  HCW-spawn-patch ;hallways where the HCWs spawn
+]
+
+patches-own[
+  high-touch-level ;high-touch surface contamination level
+  low-touch-level ;low-touch surface contamination level
 ]
 
 to setup
+  clear-all
   create-hallways ;;sets background yellow(room space color) and creates the hallways between them
-  patient-setup ;;creates a patch in each room that identifies as the patient
-  low-touch-setup ;;creates a patch in each room that identifies as the low-touch surfaces
-  high-touch-setup ;;creates a patch in each room that identifies as the high-touch surfaces
-  set-colors ;;sets all the globals to the corresponding color
+  patient-patch-color-setup ;;creates a patch in each room that identifies as the patient
+  low-touch-patch-color-setup ;;creates a patch in each room that identifies as the low-touch surfaces
+  high-touch-patch-color-setup ;;creates a patch in each room that identifies as the high-touch surfaces
+  set-patches ;;sets all the globals to the corresponding color
   set-initial-HCW ;sets initial HCW
   set-initial-patients ; sets inital patients
+  high-low-touch-setup ;sets values for high and low touch patches
 end
 
 ;sets background yellow(room space color) and creates the hallways between them
 to create-hallways
-    ask patches [set pcolor yellow]
+  ask patches [set pcolor yellow]
   ask patches [
     if (pxcor = -8 or pxcor = -5 or pxcor = -2 or pxcor = 1 or pxcor = 4 or pxcor = 7 or
     pycor = -9 or pycor = -6 or pycor = -3 or pycor = 0 or pycor = 3 or pycor = 6 or pycor = 9) [set pcolor white]
@@ -28,18 +36,18 @@ to create-hallways
 end
 
 ;creates a patch in each room that identifies as the patient
-to patient-setup
+to patient-patch-color-setup
   ask patches [
-    if (pxcor = -7 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor green]
-    if (pxcor = -4 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor green]
-    if (pxcor = -1 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor green]
-    if (pxcor = 2 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor green]
-    if (pxcor = 5 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor green]
+    if (pxcor = -7 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor grey]
+    if (pxcor = -4 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor grey]
+    if (pxcor = -1 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor grey]
+    if (pxcor = 2 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor grey]
+    if (pxcor = 5 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor grey]
   ]
 end
 
 ;creates a patch in each room that identifies as the low-touch surfaces
-to low-touch-setup
+to low-touch-patch-color-setup
   ask patches [
     if (pxcor = -6 and (pycor = 7 or pycor = 4 or pycor = 1 or pycor = -2 or pycor = -5 or pycor = -8)) [set pcolor orange]
     if (pxcor = -3 and (pycor = 7 or pycor = 4 or pycor = 1 or pycor = -2 or pycor = -5 or pycor = -8)) [set pcolor orange]
@@ -50,7 +58,7 @@ to low-touch-setup
 end
 
 ;creates a patch in each room that identifies as the high-touch surfaces
-to high-touch-setup
+to high-touch-patch-color-setup
    ask patches [
     if (pxcor = -6 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor red]
     if (pxcor = -3 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor red]
@@ -60,12 +68,23 @@ to high-touch-setup
   ]
 end
 
-;sets all the globals to the corresponding color
-to set-colors
-  set patients-patch patches with [pcolor = green]
+;sets all the globals to the corresponding color and initilaize some values
+to set-patches
+  set patients-patch patches with [pcolor = grey]
   set high-touch patches with [pcolor = red]
   set low-touch patches with [pcolor = orange]
   set hallways patches with [pcolor = white]
+
+  ;set the specific initial starting points for HCWs patches to be black
+  ask hallways [
+    if (pycor = 8 and (pxcor = -8 or pxcor = -5 or pxcor = -2 or pxcor = 1 or pxcor = 4)) [set pcolor black]
+    if (pycor = -1 and (pxcor = -8 or pxcor = -5 or pxcor = -2 or pxcor = 1 or pxcor = 4)) [set pcolor black]
+  ]
+
+  ;set HCW-spawn-patch to black patches, but then switch back to white to match the hallways
+  set HCW-spawn-patch patches with [pcolor = black]
+  ask HCW-spawn-patch[set pcolor white ]
+
 end
 
 ;set up 10 HCW agents in hallways
@@ -75,7 +94,7 @@ to set-initial-HCW
    set size .75
    set color black
    set shape "person"
-   move-to one-of hallways with [not any? HCWs-here]
+   move-to one-of HCW-spawn-patch with [not any? HCWs-here]
   ]
 end
 
@@ -90,6 +109,15 @@ to set-initial-patients
   ]
 end
 
+to high-low-touch-setup
+  ;set values for high and low touch patches from sliders
+  ask high-touch[
+    set high-touch-level high-touch-contam-level
+  ]
+  ask low-touch[
+    set low-touch-level low-touch-contam-level
+  ]
+end
 
 
 
@@ -128,10 +156,10 @@ ticks
 30.0
 
 BUTTON
-14
-34
-77
-67
+66
+32
+129
+65
 setup
 setup
 NIL
@@ -144,22 +172,35 @@ NIL
 NIL
 1
 
-BUTTON
-106
-34
-188
-67
-NIL
-clear-all
-NIL
+SLIDER
+10
+86
+196
+119
+high-touch-contam-level
+high-touch-contam-level
+0
+0.1
+0.09
+0.01
 1
-T
-OBSERVER
 NIL
-NIL
-NIL
-NIL
+HORIZONTAL
+
+SLIDER
+9
+125
+198
+158
+low-touch-contam-level
+low-touch-contam-level
+0
+.1
+0.03
+.01
 1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
