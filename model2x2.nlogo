@@ -9,6 +9,10 @@ globals[
   HCW-spawn-patch ;hallways where the HCWs spawn
 ]
 
+patients-own[
+ disease-status-at-admission ;creates a random initial disease-status for the patients
+]
+
 patches-own[
   high-touch-level ;high-touch surface contamination level
   low-touch-level ;low-touch surface contamination level
@@ -31,18 +35,18 @@ to create-hallways
   ask patches [set pcolor yellow]
   ask patches [
     if (pxcor = -8 or pxcor = -5 or pxcor = -2 or pxcor = 1 or pxcor = 4 or pxcor = 7 or
-    pycor = -9 or pycor = -6 or pycor = -3 or pycor = 0 or pycor = 3 or pycor = 6 or pycor = 9) [set pcolor white]
+    pycor = -9 or pycor = -6 or pycor = -3 or pycor = 0 or pycor = 3 or pycor = 6 or pycor = 9) [set pcolor grey]
   ]
 end
 
 ;creates a patch in each room that identifies as the patient
 to patient-patch-color-setup
   ask patches [
-    if (pxcor = -7 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor grey]
-    if (pxcor = -4 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor grey]
-    if (pxcor = -1 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor grey]
-    if (pxcor = 2 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor grey]
-    if (pxcor = 5 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor grey]
+    if (pxcor = -7 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor white]
+    if (pxcor = -4 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor white]
+    if (pxcor = -1 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor white]
+    if (pxcor = 2 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor white]
+    if (pxcor = 5 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor white]
   ]
 end
 
@@ -70,10 +74,10 @@ end
 
 ;sets all the globals to the corresponding color and initilaize some values
 to set-patches
-  set patients-patch patches with [pcolor = grey]
+  set patients-patch patches with [pcolor = white]
   set high-touch patches with [pcolor = red]
   set low-touch patches with [pcolor = orange]
-  set hallways patches with [pcolor = white]
+  set hallways patches with [pcolor = grey]
 
   ;set the specific initial starting points for HCWs patches to be black
   ask hallways [
@@ -83,7 +87,7 @@ to set-patches
 
   ;set HCW-spawn-patch to black patches, but then switch back to white to match the hallways
   set HCW-spawn-patch patches with [pcolor = black]
-  ask HCW-spawn-patch[set pcolor white ]
+  ask HCW-spawn-patch[set pcolor grey ]
 
 end
 
@@ -102,10 +106,29 @@ end
 to set-initial-patients
   let initial-patients 30
   create-patients initial-patients[
-   set size .75
-   set color white
-   set shape "person"
-   move-to one-of patients-patch with [not any? patients-here]
+    set size .75
+    set color white
+    set shape "person"
+    move-to one-of patients-patch with [not any? patients-here]
+
+    ;sets up initial disease-status for the patients
+
+    let disease-status-number random-float 1 ;provides a random decimal not higher than 1
+    ifelse disease-status-number < .75[ ;resistant probability
+      set disease-status-at-admission "resistant"
+      set color green
+    ][ifelse disease-status-number  < .75 + .09 [ ;susceptible probability
+        set disease-status-at-admission "susceptible"
+        set color brown
+      ][ifelse disease-status-number < .99[ ;colonized probability
+          set disease-status-at-admission "colonized"
+          set color blue
+        ][ ;else = diseased
+          set disease-status-at-admission "diseased"
+          set color violet
+        ]
+      ]
+    ]
   ]
 end
 
@@ -118,7 +141,6 @@ to high-low-touch-setup
     set low-touch-level low-touch-contam-level
   ]
 end
-
 
 
 
@@ -181,7 +203,7 @@ high-touch-contam-level
 high-touch-contam-level
 0
 0.1
-0.09
+0.07
 0.01
 1
 NIL
