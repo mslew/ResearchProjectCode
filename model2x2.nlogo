@@ -10,7 +10,8 @@ globals[
 ]
 
 patients-own[
- disease-status-at-admission ;creates a random initial disease-status for the patients
+  disease-status-at-admission ;creates a random initial disease-status for the patients
+  current-disease-status ;updates the current disease status of patients
 ]
 
 patches-own[
@@ -28,6 +29,12 @@ to setup
   set-initial-HCW ;sets initial HCW
   set-initial-patients ; sets inital patients
   high-low-touch-setup ;sets values for high and low touch patches
+  reset-ticks
+end
+
+to go
+  ask patients [update-disease-status]
+  tick
 end
 
 ;sets background yellow(room space color) and creates the hallways between them
@@ -116,15 +123,19 @@ to set-initial-patients
     let disease-status-number random-float 1 ;provides a random decimal not higher than 1
     ifelse disease-status-number < .75[ ;resistant probability
       set disease-status-at-admission "resistant"
+      set current-disease-status "resistant"
       set color green
     ][ifelse disease-status-number  < .75 + .09 [ ;susceptible probability
         set disease-status-at-admission "susceptible"
+        set current-disease-status "susceptible"
         set color brown
       ][ifelse disease-status-number < .99[ ;colonized probability
           set disease-status-at-admission "colonized"
+          set current-disease-status "colonized"
           set color blue
         ][ ;else = diseased
           set disease-status-at-admission "diseased"
+          set current-disease-status "diseased"
           set color violet
         ]
       ]
@@ -132,14 +143,35 @@ to set-initial-patients
   ]
 end
 
+;set values for high and low touch patches from sliders
 to high-low-touch-setup
-  ;set values for high and low touch patches from sliders
   ask high-touch[
     set high-touch-level high-touch-contam-level
   ]
   ask low-touch[
     set low-touch-level low-touch-contam-level
   ]
+end
+
+to update-disease-status
+  let prob-susceptible-to-colonized prob-becoming-colonized
+  let prob-colonized-to-diseased .00025 ;value from Sulyok 2021 divided by 96. (60 minutes / 15 minutes) * 24 hours.
+  let random-prob random-float 1
+
+  if current-disease-status = "susceptible"[
+   if random-prob <= prob-susceptible-to-colonized[
+      set current-disease-status "colonized"
+      set color blue
+    ]
+  ]
+
+  if current-disease-status = "colonized"[
+    if random-prob <= prob-colonized-to-diseased[
+      set current-disease-status "diseased"
+      set color violet
+    ]
+  ]
+
 end
 
 
@@ -151,9 +183,9 @@ end
 
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+229
 10
-426
+445
 266
 -1
 -1
@@ -178,10 +210,10 @@ ticks
 30.0
 
 BUTTON
-66
-32
-129
-65
+5
+28
+68
+61
 setup
 setup
 NIL
@@ -220,6 +252,55 @@ low-touch-contam-level
 .1
 0.03
 .01
+1
+NIL
+HORIZONTAL
+
+BUTTON
+70
+28
+133
+61
+go
+go
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+135
+28
+220
+61
+go-once
+go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SLIDER
+8
+161
+226
+194
+prob-becoming-colonized
+prob-becoming-colonized
+0
+1
+0.75
+.05
 1
 NIL
 HORIZONTAL
