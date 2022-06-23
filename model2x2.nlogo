@@ -12,11 +12,19 @@ globals[
 patients-own[
   disease-status-at-admission ;creates a random initial disease-status for the patients
   current-disease-status ;updates the current disease status of patients
+  time-since-current-disease-status
+  length-of-stay
+  patients-zone
 ]
 
 patches-own[
   high-touch-level ;high-touch surface contamination level
   low-touch-level ;low-touch surface contamination level
+  HCW-patch-zone
+]
+
+HCWs-own[
+  HCW-zone
 ]
 
 to setup
@@ -25,6 +33,8 @@ to setup
   patient-patch-color-setup ;;creates a patch in each room that identifies as the patient
   low-touch-patch-color-setup ;;creates a patch in each room that identifies as the low-touch surfaces
   high-touch-patch-color-setup ;;creates a patch in each room that identifies as the high-touch surfaces
+  HCW-zone-setup ;sets up zones for HCWs
+  HCW-spawn-zone-setup ;setup spawn zone for HCWs
   set-patches ;;sets all the globals to the corresponding color
   set-initial-HCW ;sets initial HCW
   set-initial-patients ; sets inital patients
@@ -33,7 +43,11 @@ to setup
 end
 
 to go
-  ask patients [update-disease-status]
+  ask patients [
+    update-disease-status
+    update-time
+  ]
+  visit-patients
   tick
 end
 
@@ -79,15 +93,41 @@ to high-touch-patch-color-setup
   ]
 end
 
-;sets all the globals to the corresponding color and initilaize some values
-to set-patches
-  set patients-patch patches with [pcolor = white]
-  set high-touch patches with [pcolor = red]
-  set low-touch patches with [pcolor = orange]
-  set hallways patches with [pcolor = grey]
+;this sets up the zones for each HCW to work in
+to HCW-zone-setup
+  ask patches [
+    if (pxcor = -7 and (pycor = 8 or pycor = 5 or pycor = 2)) [set HCW-patch-zone 1]
+    if (pxcor = -4 and (pycor = 8 or pycor = 5 or pycor = 2)) [set HCW-patch-zone 2]
+    if (pxcor = -1 and (pycor = 8 or pycor = 5 or pycor = 2)) [set HCW-patch-zone 3]
+    if (pxcor = 2 and (pycor = 8 or pycor = 5 or pycor = 2)) [set HCW-patch-zone 4]
+    if (pxcor = 5 and (pycor = 8 or pycor = 5 or pycor = 2)) [set HCW-patch-zone 5]
+
+    if (pxcor = -7 and (pycor = -1 or pycor = -4 or pycor = -7)) [set HCW-patch-zone 6]
+    if (pxcor = -4 and (pycor = -1 or pycor = -4 or pycor = -7)) [set HCW-patch-zone 7]
+    if (pxcor = -1 and (pycor = -1 or pycor = -4 or pycor = -7)) [set HCW-patch-zone 8]
+    if (pxcor = 2 and (pycor = -1 or pycor = -4 or pycor = -7)) [set HCW-patch-zone 9]
+    if (pxcor = 5 and (pycor = -1 or pycor = -4 or pycor = -7)) [set HCW-patch-zone 10]
+  ]
+end
+
+;this is to assign patches were the HCWs spawn and set their zones
+to HCW-spawn-zone-setup
+  ask patches[
+    if (pxcor = -8 and pycor = 8) [set HCW-patch-zone 1]
+    if (pxcor = -5 and pycor = 8) [set HCW-patch-zone 2]
+    if (pxcor = -2 and pycor = 8) [set HCW-patch-zone 3]
+    if (pxcor = 1 and pycor = 8) [set HCW-patch-zone 4]
+    if (pxcor = 4 and pycor = 8) [set HCW-patch-zone 5]
+
+    if (pxcor = -8 and pycor = -1) [set HCW-patch-zone 6]
+    if (pxcor = -5 and pycor = -1) [set HCW-patch-zone 7]
+    if (pxcor = -2 and pycor = -1) [set HCW-patch-zone 8]
+    if (pxcor = 1 and pycor = -1) [set HCW-patch-zone 9]
+    if (pxcor = 4 and pycor = -1) [set HCW-patch-zone 10]
+  ]
 
   ;set the specific initial starting points for HCWs patches to be black
-  ask hallways [
+  ask patches [
     if (pycor = 8 and (pxcor = -8 or pxcor = -5 or pxcor = -2 or pxcor = 1 or pxcor = 4)) [set pcolor black]
     if (pycor = -1 and (pxcor = -8 or pxcor = -5 or pxcor = -2 or pxcor = 1 or pxcor = 4)) [set pcolor black]
   ]
@@ -95,7 +135,14 @@ to set-patches
   ;set HCW-spawn-patch to black patches, but then switch back to white to match the hallways
   set HCW-spawn-patch patches with [pcolor = black]
   ask HCW-spawn-patch[set pcolor grey ]
+end
 
+;sets all the globals to the corresponding color and initilaize some values
+to set-patches
+  set patients-patch patches with [pcolor = white]
+  set high-touch patches with [pcolor = red]
+  set low-touch patches with [pcolor = orange]
+  set hallways patches with [pcolor = grey]
 end
 
 ;set up 10 HCW agents in hallways
@@ -106,6 +153,9 @@ to set-initial-HCW
    set color black
    set shape "person"
    move-to one-of HCW-spawn-patch with [not any? HCWs-here]
+  ]
+  ask HCWs[
+    set HCW-zone HCW-patch-zone
   ]
 end
 
@@ -119,7 +169,6 @@ to set-initial-patients
     move-to one-of patients-patch with [not any? patients-here]
 
     ;sets up initial disease-status for the patients
-
     let disease-status-number random-float 1 ;provides a random decimal not higher than 1
     ifelse disease-status-number < .75[ ;resistant probability
       set disease-status-at-admission "resistant"
@@ -141,6 +190,9 @@ to set-initial-patients
       ]
     ]
   ]
+  ask patients[
+   set patients-zone HCW-patch-zone
+  ]
 end
 
 ;set values for high and low touch patches from sliders
@@ -153,27 +205,60 @@ to high-low-touch-setup
   ]
 end
 
+;determine disease-status for patients
 to update-disease-status
   let prob-susceptible-to-colonized prob-becoming-colonized
   let prob-colonized-to-diseased .00025 ;value from Sulyok 2021 divided by 96. (60 minutes / 15 minutes) * 24 hours.
+  let alpha 0.5 / 96   ;;probability of becoming susceptible
+  let theta 0.033 / 96 ;;probability of becoming resistant again
+  ;;probability of resistant patients to become susceptible
   let random-prob random-float 1
 
-  if current-disease-status = "susceptible"[
+  ifelse current-disease-status = "resistant"
+  [
+    if random-prob <= alpha
+        [
+          set current-disease-status "susceptible"
+          set color brown
+          set time-since-current-disease-status 0
+        ]
+  ]
+  ;;probability of susceptible patients to become resistant
+  [if current-disease-status = "susceptible" ;;if for now until have more elses to use ifelse
+    [
+      if random-prob < theta ;;same as above
+      [set current-disease-status "resistant"
+       set color green
+       set time-since-current-disease-status 0]
+    ]
+  ]if current-disease-status = "susceptible"[
    if random-prob <= prob-susceptible-to-colonized[
       set current-disease-status "colonized"
       set color blue
+      set time-since-current-disease-status 0
     ]
-  ]
-
-  if current-disease-status = "colonized"[
+  ]if current-disease-status = "colonized"[
     if random-prob <= prob-colonized-to-diseased[
       set current-disease-status "diseased"
       set color violet
+      set time-since-current-disease-status 0
     ]
   ]
 
 end
 
+;update times for patients
+to update-time
+  set length-of-stay length-of-stay + 15
+  set time-since-current-disease-status time-since-current-disease-status + 15
+end
+
+;how the HCWs visit patients
+to visit-patients
+  ask HCWs[
+    move-to one-of patients-patch with [not any? HCWs-here]
+  ]
+end
 
 
 
@@ -299,7 +384,7 @@ prob-becoming-colonized
 prob-becoming-colonized
 0
 1
-0.75
+0.25
 .05
 1
 NIL
