@@ -12,19 +12,22 @@ globals[
 patients-own[
   disease-status-at-admission ;creates a random initial disease-status for the patients
   current-disease-status ;updates the current disease status of patients
-  time-since-current-disease-status
-  length-of-stay
-  patients-zone
+  time-since-current-disease-status ;time of having this status
+  length-of-stay ;length of stay in the room
+  patients-zone ;what zone of the ward the patient is in
+  time-since-succ-screening ;what time since successful screening
+  time-since-unsucc-screening ;what time since unsuccessful screening
+  will-ID ;if a patient gets IDd for treatment
 ]
 
 patches-own[
   high-touch-level ;high-touch surface contamination level
   low-touch-level ;low-touch surface contamination level
-  HCW-patch-zone
+  HCW-patch-zone ;what zone a patient patch is in
 ]
 
 HCWs-own[
-  HCW-zone
+  HCW-zone ;what zone the HCWs work in
 ]
 
 to setup
@@ -211,12 +214,13 @@ to update-disease-status
   let prob-colonized-to-diseased .00025 ;value from Sulyok 2021 divided by 96. (60 minutes / 15 minutes) * 24 hours.
   let alpha 0.5 / 96   ;;probability of becoming susceptible
   let theta 0.033 / 96 ;;probability of becoming resistant again
+  let epsilon 0.08 / 96 ;probability of becoming susceptible from diseased
   ;;probability of resistant patients to become susceptible
   let random-prob random-float 1
 
   ifelse current-disease-status = "resistant"
   [
-    if random-prob <= alpha
+    if random-prob < alpha
         [
           set current-disease-status "susceptible"
           set color brown
@@ -232,19 +236,24 @@ to update-disease-status
        set time-since-current-disease-status 0]
     ]
   ]if current-disease-status = "susceptible"[
-   if random-prob <= prob-susceptible-to-colonized[
+   if random-prob < prob-susceptible-to-colonized[
       set current-disease-status "colonized"
       set color blue
       set time-since-current-disease-status 0
     ]
   ]if current-disease-status = "colonized"[
-    if random-prob <= prob-colonized-to-diseased[
+    if random-prob < prob-colonized-to-diseased[
       set current-disease-status "diseased"
       set color violet
       set time-since-current-disease-status 0
+    ]if current-disease-status = "diseased" [ ;diseased to susceptible here: use epsilon.
+      if random-prob < epsilon[
+        set current-disease-status "susceptible"
+        set color brown
+        set time-since-current-disease-status 0
+      ] ;need to implement the will-ID stuff here.
     ]
   ]
-
 end
 
 ;update times for patients
@@ -253,13 +262,18 @@ to update-time
   set time-since-current-disease-status time-since-current-disease-status + 15
 end
 
-;how the HCWs visit patients
-to visit-patients
-  ask HCWs[
-    move-to one-of patients-patch with [not any? HCWs-here]
-  ]
+;sub-model to update times for when a patient gets screened.
+to update-screening-times
+  ask patients with [current-disease-status = "diseased" and will-ID = "yes"] [set time-since-succ-screening time-since-succ-screening + 15]
+  ask patients with [current-disease-status = "diseased" and will-ID = "no"] [set time-since-succ-screening time-since-unsucc-screening + 15]
 end
 
+;how the HCWs visit patients
+to visit-patients
+  ask HCWs with [HCW-zone = 1][
+    move-to one-of patients-patch with [HCW-patch-zone = 1]
+  ]
+end
 
 
 
@@ -384,7 +398,7 @@ prob-becoming-colonized
 prob-becoming-colonized
 0
 1
-0.25
+0.8
 .05
 1
 NIL
