@@ -15,15 +15,19 @@ patients-own[
   time-since-current-disease-status ;time of having this status
   length-of-stay ;length of stay in the room
   patients-zone ;what zone of the ward the patient is in
+  time-since-visit
+  visit-time
   time-since-succ-screening ;what time since successful screening
   time-since-unsucc-screening ;what time since unsuccessful screening
   will-ID ;if a patient gets IDd for treatment
+  will-treat-succ ;will treat CDI successfully
 ]
 
 patches-own[
   high-touch-level ;high-touch surface contamination level
   low-touch-level ;low-touch surface contamination level
   HCW-patch-zone ;what zone a patient patch is in
+  patient-status
 ]
 
 HCWs-own[
@@ -50,7 +54,7 @@ to go
     update-disease-status
     update-time
   ]
-  visit-patients
+  ;visit-patients
   tick
 end
 
@@ -217,6 +221,7 @@ to update-disease-status
   let epsilon 0.08 / 96 ;probability of becoming susceptible from diseased
   ;;probability of resistant patients to become susceptible
   let random-prob random-float 1
+  let turnover 96
 
   ifelse current-disease-status = "resistant"
   [
@@ -248,12 +253,23 @@ to update-disease-status
       set time-since-current-disease-status 0
     ]if current-disease-status = "diseased" [ ;diseased to susceptible here: use epsilon.
       if random-prob < epsilon[
-        set current-disease-status "susceptible"
-        set color brown
         set time-since-current-disease-status 0
-      ] ;need to implement the will-ID stuff here.
+        ifelse random-float 1 < prob-succ-treat [set will-treat-succ "yes"][set will-treat-succ "no"]
+        ifelse random-float 1 < sensitivity [
+          set will-ID "yes"
+          set time-since-succ-screening 0
+          update-screening-times
+        ][
+          set will-ID "no"
+          set time-since-unsucc-screening 0
+          update-screening-times
+        ]
+      ]
     ]
   ]
+  ;if will-ID = "yes"[
+  ;  [if time-since-succ-screening >= turnover []]
+  ;]
 end
 
 ;update times for patients
@@ -265,18 +281,52 @@ end
 ;sub-model to update times for when a patient gets screened.
 to update-screening-times
   ask patients with [current-disease-status = "diseased" and will-ID = "yes"] [set time-since-succ-screening time-since-succ-screening + 15]
-  ask patients with [current-disease-status = "diseased" and will-ID = "no"] [set time-since-succ-screening time-since-unsucc-screening + 15]
+  ask patients with [current-disease-status = "diseased" and will-ID = "no"] [set time-since-unsucc-screening time-since-unsucc-screening + 15]
 end
 
 ;how the HCWs visit patients
-to visit-patients
-  ask HCWs with [HCW-zone = 1][
-    move-to one-of patients-patch with [HCW-patch-zone = 1]
-  ]
-end
-
-
-
+;to visit-patients
+;  let n 1
+;  while [n < 10]
+;  [ask HCWs with [HCW-zone = n][
+;    let RD1 random-float 1
+;    ifelse any? patients with [patients-zone = n and current-disease-status = "diseased" and RD1 < 0.8]
+;    [ask HCWs with [HCW-zone = n] [move-to one-of patients-patch with [HCW-patch-zone = n and patient-status = "diseased"]]
+;      ask patients [set time-since-visit 0]
+;      ask patients [set visit-time 0]
+;      if visit-time = 30
+;      [ask HCWs []]
+;    ]
+;    [ifelse any? patients with [patients-zone = n and time-since-visit > 60]
+;      [ask HCWs with [HCW-zone = n] [move-to one-of patients-patch with [HCW-patch-zone = n and time-since-visit > 60]]
+;       ask patients [set time-since-visit 0]
+;       ask patients [set visit-time 0]
+;       ]
+;      [ifelse any? patients with [patients-zone = n and patient-status = "colonized" or patient-status = "susceptible" ]
+;        [let RD2 random-float 1
+;          ifelse RD2 < 0.5
+;          [ask HCWs with [HCW-zone = n] [move-to one-of patients-patch with [HCW-patch-zone = n and patient-status = "colonized"]]
+;           ask patients [set time-since-visit 0]
+;           ask patients [set visit-time 0]
+;           ]
+;          [ask HCWs with [HCW-zone = n] [move-to one-of patients-patch with [HCW-patch-zone = n and patient-status = "susceptible"]]
+;           ask patients [set time-since-visit 0]
+;           ask patients [set visit-time 0]
+;           ]
+;        ]
+;          [ask HCWs with [HCW-zone = n] [move-to one-of patients-patch with [HCW-patch-zone = n and patient-status = "resistant"]]
+;         ask patients [set time-since-visit 0]
+;         ask patients [set visit-time 0]
+;
+;        ]
+;      ]
+;
+;    ]
+;  ]
+;    set n n + 1
+;  ]
+;  set n 1
+;end
 
 
 
@@ -349,7 +399,7 @@ low-touch-contam-level
 low-touch-contam-level
 0
 .1
-0.03
+0.02
 .01
 1
 NIL
@@ -396,6 +446,36 @@ SLIDER
 194
 prob-becoming-colonized
 prob-becoming-colonized
+0
+1
+0.35
+.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+7
+195
+179
+228
+prob-succ-treat
+prob-succ-treat
+0
+1
+0.65
+.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+6
+230
+178
+263
+sensitivity
+sensitivity
 0
 1
 0.8
