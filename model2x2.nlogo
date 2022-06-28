@@ -215,43 +215,43 @@ end
 ;determine disease-status for patients
 to update-disease-status
   let prob-susceptible-to-colonized prob-becoming-colonized
-  let prob-colonized-to-diseased .00025 ;value from Sulyok 2021 divided by 96. (60 minutes / 15 minutes) * 24 hours.
+  let prob-colonized-to-diseased .024 / 96 ;phi
   let alpha 0.5 / 96   ;;probability of becoming susceptible
   let theta 0.033 / 96 ;;probability of becoming resistant again
   let epsilon 0.08 / 96 ;probability of becoming susceptible from diseased
-  ;;probability of resistant patients to become susceptible
   let random-prob random-float 1
-  let turnover 96
+  let turnover 96 ;turnover for successful screening
 
-  ifelse current-disease-status = "resistant"
-  [
-    if random-prob < alpha
-        [
-          set current-disease-status "susceptible"
-          set color brown
-          set time-since-current-disease-status 0
-        ]
+  if current-disease-status = "resistant"[
+    if random-prob < alpha[
+      set current-disease-status "susceptible"
+      set color brown
+      set time-since-current-disease-status 0
+    ]
   ]
   ;;probability of susceptible patients to become resistant
-  [if current-disease-status = "susceptible" ;;if for now until have more elses to use ifelse
-    [
-      if random-prob < theta ;;same as above
-      [set current-disease-status "resistant"
+  if current-disease-status = "susceptible"[ ;;if for now until have more elses to use ifelse
+      if random-prob < theta[ ;;same as above
+       set current-disease-status "resistant"
        set color green
-       set time-since-current-disease-status 0]
+       set time-since-current-disease-status 0
     ]
-  ]if current-disease-status = "susceptible"[
+  ]
+  if current-disease-status = "susceptible"[
    if random-prob < prob-susceptible-to-colonized[
       set current-disease-status "colonized"
       set color blue
       set time-since-current-disease-status 0
     ]
-  ]if current-disease-status = "colonized"[
+  ]
+  if current-disease-status = "colonized"[
     if random-prob < prob-colonized-to-diseased[
       set current-disease-status "diseased"
       set color violet
       set time-since-current-disease-status 0
-    ]if current-disease-status = "diseased" [ ;diseased to susceptible here: use epsilon.
+    ]
+  ]
+  if current-disease-status = "diseased" [ ;diseased to susceptible here: use epsilon.
       if random-prob < epsilon[
         set time-since-current-disease-status 0
         ifelse random-float 1 < prob-succ-treat [set will-treat-succ "yes"][set will-treat-succ "no"]
@@ -265,11 +265,26 @@ to update-disease-status
           update-screening-times
         ]
       ]
+      if will-ID  = "yes" and will-treat-succ = "yes"[
+        set current-disease-status "susceptible"
+        set color brown
+        set time-since-current-disease-status 0
+    ]
+      if will-ID = "no"[
+        if time-since-unsucc-screening > turnover [ ;after an unseccessful screen, symptomatic patient is screened again
+          ifelse random-float 1 < sensitivity [ ;determines if the screening will work
+            set will-ID "yes"
+            set time-since-succ-screening 0
+            update-screening-times
+       ][
+          set will-ID "no"
+          set time-since-unsucc-screening 0
+          update-screening-times
+        ]
+      ]
     ]
   ]
-  ;if will-ID = "yes"[
-  ;  [if time-since-succ-screening >= turnover []]
-  ;]
+  update-time
 end
 
 ;update times for patients
@@ -329,7 +344,6 @@ end
 ;end
 
 
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 229
@@ -376,10 +390,10 @@ NIL
 1
 
 SLIDER
-10
-86
-196
-119
+9
+90
+195
+123
 high-touch-contam-level
 high-touch-contam-level
 0
@@ -447,9 +461,9 @@ SLIDER
 prob-becoming-colonized
 prob-becoming-colonized
 0
-1
-0.35
-.05
+.01
+0.002
+.0001
 1
 NIL
 HORIZONTAL
@@ -463,7 +477,7 @@ prob-succ-treat
 prob-succ-treat
 0
 1
-0.65
+0.7
 .05
 1
 NIL
@@ -478,7 +492,7 @@ sensitivity
 sensitivity
 0
 1
-0.8
+0.5
 .05
 1
 NIL
