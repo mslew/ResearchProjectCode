@@ -21,11 +21,14 @@ patients-own[
   time-since-unsucc-screening ;what time since unsuccessful screening
   will-ID ;if a patient gets IDd for treatment
   will-treat-succ ;will treat CDI successfully
+  will-ID-no-count ;count of how many times will-IDs are no
 ]
 
 patches-own[
-  high-touch-level ;high-touch surface contamination level
-  low-touch-level ;low-touch surface contamination level
+  initial-high-touch-level ;high-touch surface contamination level
+  initial-low-touch-level ;low-touch surface contamination level
+  active-high-touch-level ;active high-touch surface contamination level
+  active-low-touch-level ;active low-touch surface contamination level
   HCW-patch-zone ;what zone a patient patch is in
   patient-status
 ]
@@ -54,7 +57,7 @@ to go
     update-disease-status
     update-time
   ]
-  ;visit-patients
+  clean-high-touch
   tick
 end
 
@@ -205,10 +208,10 @@ end
 ;set values for high and low touch patches from sliders
 to high-low-touch-setup
   ask high-touch[
-    set high-touch-level high-touch-contam-level
+    set initial-high-touch-level high-touch-contam-level
   ]
   ask low-touch[
-    set low-touch-level low-touch-contam-level
+    set initial-low-touch-level low-touch-contam-level
   ]
 end
 
@@ -245,13 +248,17 @@ to update-disease-status
     ]
   ]
   if current-disease-status = "colonized"[
+    high-touch-shedding
+    low-touch-shedding
     if random-prob < prob-colonized-to-diseased[
       set current-disease-status "diseased"
       set color violet
       set time-since-current-disease-status 0
     ]
   ]
-  if current-disease-status = "diseased" [ ;diseased to susceptible here: use epsilon.
+  if current-disease-status = "diseased"[ ;diseased to susceptible here: use epsilon.
+    high-touch-shedding
+    low-touch-shedding
       if random-prob < epsilon[
         set time-since-current-disease-status 0
         ifelse random-float 1 < prob-succ-treat [set will-treat-succ "yes"][set will-treat-succ "no"]
@@ -270,7 +277,8 @@ to update-disease-status
         set color brown
         set time-since-current-disease-status 0
     ]
-      if will-ID = "no"[
+      if will-ID = "no" and will-ID-no-count < 2[ ;IMPLEMENT THIS. two successive no's and then we are done.
+        set will-ID-no-count will-ID-no-count + 1
         if time-since-unsucc-screening > turnover [ ;after an unseccessful screen, symptomatic patient is screened again
           ifelse random-float 1 < sensitivity [ ;determines if the screening will work
             set will-ID "yes"
@@ -299,49 +307,58 @@ to update-screening-times
   ask patients with [current-disease-status = "diseased" and will-ID = "no"] [set time-since-unsucc-screening time-since-unsucc-screening + 15]
 end
 
-;how the HCWs visit patients
-;to visit-patients
-;  let n 1
-;  while [n < 10]
-;  [ask HCWs with [HCW-zone = n][
-;    let RD1 random-float 1
-;    ifelse any? patients with [patients-zone = n and current-disease-status = "diseased" and RD1 < 0.8]
-;    [ask HCWs with [HCW-zone = n] [move-to one-of patients-patch with [HCW-patch-zone = n and patient-status = "diseased"]]
-;      ask patients [set time-since-visit 0]
-;      ask patients [set visit-time 0]
-;      if visit-time = 30
-;      [ask HCWs []]
-;    ]
-;    [ifelse any? patients with [patients-zone = n and time-since-visit > 60]
-;      [ask HCWs with [HCW-zone = n] [move-to one-of patients-patch with [HCW-patch-zone = n and time-since-visit > 60]]
-;       ask patients [set time-since-visit 0]
-;       ask patients [set visit-time 0]
-;       ]
-;      [ifelse any? patients with [patients-zone = n and patient-status = "colonized" or patient-status = "susceptible" ]
-;        [let RD2 random-float 1
-;          ifelse RD2 < 0.5
-;          [ask HCWs with [HCW-zone = n] [move-to one-of patients-patch with [HCW-patch-zone = n and patient-status = "colonized"]]
-;           ask patients [set time-since-visit 0]
-;           ask patients [set visit-time 0]
-;           ]
-;          [ask HCWs with [HCW-zone = n] [move-to one-of patients-patch with [HCW-patch-zone = n and patient-status = "susceptible"]]
-;           ask patients [set time-since-visit 0]
-;           ask patients [set visit-time 0]
-;           ]
-;        ]
-;          [ask HCWs with [HCW-zone = n] [move-to one-of patients-patch with [HCW-patch-zone = n and patient-status = "resistant"]]
-;         ask patients [set time-since-visit 0]
-;         ask patients [set visit-time 0]
-;
-;        ]
-;      ]
-;
-;    ]
-;  ]
-;    set n n + 1
-;  ]
-;  set n 1
-;end
+;how the high-touch patches gets its spores
+to high-touch-shedding
+  let colonized-contacts-per-tick 9.424 / 96 ;probability of colonized patient adding spores to a high touch surface
+  let diseased-contacts-per-tick 9.424 / 96 ;probability of diseased patient adding spores to a high touch surface
+
+  let colonized-spores-per-contact .006 ;each time a colonized patient touches a high touch, this is how many spores are added per cm^2
+  let diseased-spores-per-contact .013 ;each time a diseased patient touches a high touch, this is how many spores are added per cm^2
+
+  let random-num random-float 1
+
+  if current-disease-status = "colonized"[
+    if random-num < colonized-contacts-per-tick[
+      ask patch-at-heading-and-distance 90 1 [set active-high-touch-level active-high-touch-level + colonized-spores-per-contact] ;sets patch's level 1 grid east of patient
+    ]
+  ]
+
+  if current-disease-status = "diseased"[
+    if random-num < diseased-contacts-per-tick[
+      ask patch-at-heading-and-distance 90 1 [set active-high-touch-level active-high-touch-level + colonized-spores-per-contact] ;sets patch's level 1 grid east of patient
+    ]
+  ]
+end
+
+;how the high-touch patches gets its spores
+to low-touch-shedding
+  let colonized-contacts-per-tick 4.818 / 96 ;probability of colonized patient adding spores to a low touch surface
+  let diseased-contacts-per-tick 4.818 / 96 ;probability of diseased patient adding spores to a low touch surface
+
+  let colonized-spores-per-contact .006 ;each time a colonized patient touches a low touch, this is how many spores are added per cm^2
+  let diseased-spores-per-contact .013 ;each time a diseased patient touches a low touch, this is how many spores are added per cm^2
+
+  let random-num random-float 1
+
+  if current-disease-status = "colonized"[
+    if random-num < colonized-contacts-per-tick[
+      ask patch-at-heading-and-distance 135 1 [set active-low-touch-level active-low-touch-level + colonized-spores-per-contact] ;sets patch's level 1 grid southeast of patient. add more spores
+    ]
+  ]
+
+  if current-disease-status = "diseased"[
+    if random-num < diseased-contacts-per-tick[
+      ask patch-at-heading-and-distance 135 1 [set active-low-touch-level active-low-touch-level + colonized-spores-per-contact] ;sets patch's level 1 grid southeast of patient. add more spores
+    ]
+  ]
+end
+
+to clean-high-touch
+  let spores-killed-from-extra-cleaning 0.66 / 96 ;taken from Sulyok 2021
+  ask high-touch [
+    set active-high-touch-level (active-high-touch-level - (active-high-touch-level * spores-killed-from-extra-cleaning))
+  ]
+end
 
 
 @#$#@#$#@
