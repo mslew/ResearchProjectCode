@@ -57,7 +57,7 @@ to go
     update-disease-status
     update-time
   ]
-  clean-high-touch
+  clean-high-touch-2
   tick
 end
 
@@ -84,22 +84,22 @@ end
 ;creates a patch in each room that identifies as the low-touch surfaces
 to low-touch-patch-color-setup
   ask patches [
-    if (pxcor = -6 and (pycor = 7 or pycor = 4 or pycor = 1 or pycor = -2 or pycor = -5 or pycor = -8)) [set pcolor orange]
-    if (pxcor = -3 and (pycor = 7 or pycor = 4 or pycor = 1 or pycor = -2 or pycor = -5 or pycor = -8)) [set pcolor orange]
-    if (pxcor = 0 and (pycor = 7 or pycor = 4 or pycor = 1 or pycor = -2 or pycor = -5 or pycor = -8)) [set pcolor orange]
-    if (pxcor = 3 and (pycor = 7 or pycor = 4 or pycor = 1 or pycor = -2 or pycor = -5 or pycor = -8)) [set pcolor orange]
-    if (pxcor = 6 and (pycor = 7 or pycor = 4 or pycor = 1 or pycor = -2 or pycor = -5 or pycor = -8)) [set pcolor orange]
+    if (pxcor = -6 and (pycor = 7 or pycor = 4 or pycor = 1 or pycor = -2 or pycor = -5 or pycor = -8)) [set pcolor 27]
+    if (pxcor = -3 and (pycor = 7 or pycor = 4 or pycor = 1 or pycor = -2 or pycor = -5 or pycor = -8)) [set pcolor 27]
+    if (pxcor = 0 and (pycor = 7 or pycor = 4 or pycor = 1 or pycor = -2 or pycor = -5 or pycor = -8)) [set pcolor 27]
+    if (pxcor = 3 and (pycor = 7 or pycor = 4 or pycor = 1 or pycor = -2 or pycor = -5 or pycor = -8)) [set pcolor 27]
+    if (pxcor = 6 and (pycor = 7 or pycor = 4 or pycor = 1 or pycor = -2 or pycor = -5 or pycor = -8)) [set pcolor 27]
   ]
 end
 
 ;creates a patch in each room that identifies as the high-touch surfaces
 to high-touch-patch-color-setup
    ask patches [
-    if (pxcor = -6 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor red]
-    if (pxcor = -3 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor red]
-    if (pxcor = 0 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor red]
-    if (pxcor = 3 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor red]
-    if (pxcor = 6 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor red]
+    if (pxcor = -6 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor 17]
+    if (pxcor = -3 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor 17]
+    if (pxcor = 0 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor 17]
+    if (pxcor = 3 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor 17]
+    if (pxcor = 6 and (pycor = 8 or pycor = 5 or pycor = 2 or pycor = -1 or pycor = -4 or pycor = -7)) [set pcolor 17]
   ]
 end
 
@@ -150,8 +150,8 @@ end
 ;sets all the globals to the corresponding color and initilaize some values
 to set-patches
   set patients-patch patches with [pcolor = white]
-  set high-touch patches with [pcolor = red]
-  set low-touch patches with [pcolor = orange]
+  set high-touch patches with [pcolor = 17]
+  set low-touch patches with [pcolor = 27]
   set hallways patches with [pcolor = grey]
 end
 
@@ -328,6 +328,20 @@ to high-touch-shedding
       ask patch-at-heading-and-distance 90 1 [set active-high-touch-level active-high-touch-level + colonized-spores-per-contact] ;sets patch's level 1 grid east of patient
     ]
   ]
+
+  ;here is the block for changing colors. Darker colors for more spores. 17 -> 16 -> 15
+  ask patch-at-heading-and-distance 90 1 [
+   ;here is the block for changing colors
+    if active-high-touch-level > 0 and active-high-touch-level <= 0.05[
+      set pcolor 17 ;sets patch's level 1 grid east of patient to low level color
+    ]
+    if active-high-touch-level > 0.05 and active-high-touch-level <= 0.1[
+      set pcolor 16 ;sets patch's level 1 grid east of patient to medium level color
+    ]
+    if active-high-touch-level > 0.1[
+      set pcolor 15 ;sets patch's level 1 grid east of patient to high level color
+    ]
+  ]
 end
 
 ;how the high-touch patches gets its spores
@@ -351,6 +365,20 @@ to low-touch-shedding
       ask patch-at-heading-and-distance 135 1 [set active-low-touch-level active-low-touch-level + colonized-spores-per-contact] ;sets patch's level 1 grid southeast of patient. add more spores
     ]
   ]
+
+  ;here is the block for changing colors. Darker colors for more spores. 27 -> 26 -> 25
+  ask patch-at-heading-and-distance 135 1 [
+   ;here is the block for changing colors
+    if active-low-touch-level > 0 and active-low-touch-level <= 0.05[
+      set pcolor 27 ;sets patch's level 1 grid east of patient to low level color
+    ]
+    if active-low-touch-level > 0.05 and active-low-touch-level <= 0.1[
+      set pcolor 26 ;sets patch's level 1 grid east of patient to medium level color
+    ]
+    if active-low-touch-level > 0.1[
+      set pcolor 25 ;sets patch's level 1 grid east of patient to high level color
+    ]
+  ]
 end
 
 to clean-high-touch
@@ -359,6 +387,44 @@ to clean-high-touch
     set active-high-touch-level (active-high-touch-level - (active-high-touch-level * spores-killed-from-extra-cleaning))
   ]
 end
+
+;slider version. that allows for changing of the probability
+to clean-high-touch-2
+  let spores-killed-from-extra-cleaning .66 ;66% of spores removed
+  let random-num random-float 1
+
+  if random-num < chance-of-cleaning[
+    ask high-touch [
+      set active-high-touch-level (active-high-touch-level - (active-high-touch-level * spores-killed-from-extra-cleaning))
+    ]
+  ]
+end
+
+;treat .66/96 as a probability per tick if true .66/96 of spores are removed.
+to clean-high-touch-3
+  let chance-of-cleaning-2 0.66 / 96
+  let spores-killed-from-extra-cleaning 0.66 ;66% of spores removed
+  let random-num random-float 1
+
+  if random-num < chance-of-cleaning-2[
+    ask high-touch [
+      set active-high-touch-level (active-high-touch-level - (active-high-touch-level * spores-killed-from-extra-cleaning))
+    ]
+  ]
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 @#$#@#$#@
@@ -511,6 +577,21 @@ sensitivity
 1
 0.5
 .05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+6
+265
+188
+298
+chance-of-cleaning
+chance-of-cleaning
+0
+1
+0.02
+.01
 1
 NIL
 HORIZONTAL
