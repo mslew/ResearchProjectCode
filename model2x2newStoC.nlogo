@@ -217,7 +217,6 @@ end
 
 ;determine disease-status for patients
 to update-disease-status
-  let prob-susceptible-to-colonized prob-becoming-colonized
   let prob-colonized-to-diseased .024 / 96 ;phi
   let alpha 0.5 / 96   ;;probability of becoming susceptible
   let theta 0.033 / 96 ;;probability of becoming resistant again
@@ -241,11 +240,7 @@ to update-disease-status
     ]
   ]
   if current-disease-status = "susceptible"[
-   if random-prob < prob-susceptible-to-colonized[
-      set current-disease-status "colonized"
-      set color blue
-      set time-since-current-disease-status 0
-    ]
+    susceptible-to-colonized
   ]
   if current-disease-status = "colonized"[
     high-touch-shedding
@@ -383,7 +378,7 @@ end
 
 ;cleaning high-touch every tick
 to clean-high-touch
-  let spores-killed-from-extra-cleaning 0.66 / 96 ;taken from Sulyok 2021
+  let spores-killed-from-extra-cleaning 0.66 / 96 ;taken from Sulyok 2021. 66% of spores removed
   ask high-touch [
     set active-high-touch-level (active-high-touch-level - (active-high-touch-level * spores-killed-from-extra-cleaning))
   ]
@@ -391,13 +386,49 @@ end
 
 ;treat .66/96 as a probability per tick if true .66/96 of spores are removed.
 to clean-high-touch-2
-  let chance-of-cleaning-2 0.66 / 96
+  let chance-of-cleaning 0.66 / 96
   let spores-killed-from-extra-cleaning 0.66 ;66% of spores removed
   let random-num random-float 1
 
-  if random-num < chance-of-cleaning-2[
+  if random-num < chance-of-cleaning[
     ask high-touch [
       set active-high-touch-level (active-high-touch-level - (active-high-touch-level * spores-killed-from-extra-cleaning))
+    ]
+  ]
+end
+
+;susceptible to colonized block utilizing the touch surfaces.
+to susceptible-to-colonized
+  let K 7.5 ;half saturation constant
+  let B 0.338 ;colonization rate upon transfer of spores from a fomite
+  let high-touch-level 0 ;set this initially to 0
+  let low-touch-level 0 ;set this initially to 0
+
+  ;set these high and low touch levels to the values from in the patients room
+  ask patch-at-heading-and-distance 90 1 [
+    set high-touch-level active-high-touch-level
+  ]
+  ask patch-at-heading-and-distance 135 1[
+    set low-touch-level active-low-touch-level
+  ]
+
+  ;create chances and random values
+  let chance-from-high-touch (B * (high-touch-level / (K + high-touch-level))) / 96 ;divide this by 96?
+  let chance-from-low-touch (B * (low-touch-level / (K + low-touch-level))) / 96 ;divide this by 96?
+  let random-num random-float 1
+  let random-num2 random-float 1
+
+  ifelse random-num < .66[ ;percentage to touch high-touch
+    if random-num2 < chance-from-high-touch[
+      set current-disease-status "colonized"
+      set color blue
+      set time-since-current-disease-status 0
+    ]
+  ][
+    if random-num2 < chance-from-low-touch[
+      set current-disease-status "colonized"
+      set color blue
+      set time-since-current-disease-status 0
     ]
   ]
 end
@@ -525,25 +556,10 @@ NIL
 1
 
 SLIDER
-8
-161
-226
-194
-prob-becoming-colonized
-prob-becoming-colonized
-0
-.01
-0.002
-.0001
-1
-NIL
-HORIZONTAL
-
-SLIDER
-7
-195
-179
-228
+9
+159
+181
+192
 prob-succ-treat
 prob-succ-treat
 0
@@ -555,10 +571,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-6
-230
-178
-263
+9
+195
+181
+228
 sensitivity
 sensitivity
 0
