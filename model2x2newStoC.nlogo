@@ -7,6 +7,7 @@ globals[
   low-touch ;;patches identifying low-touch frequency surfaces
   hallways ;hallways patches
   HCW-spawn-patch ;hallways where the HCWs spawn
+  time;
 ]
 
 patients-own[
@@ -22,6 +23,8 @@ patients-own[
   will-ID ;if a patient gets IDd for treatment
   will-treat-succ ;will treat CDI successfully
   will-ID-no-count ;count of how many times will-IDs are no
+  new-disease-status ;this is solely used for the if statements in update-disease-status so they don't get called twice.
+  time-since-treatment ;have some time here before going back to susceptible
 ]
 
 patches-own[
@@ -57,7 +60,13 @@ to go
     update-disease-status
     update-time
   ]
-  clean-high-touch-2
+
+  ;every day we clean high-touch
+  if time mod 1440 = 0[
+    clean-high-touch
+  ]
+  ;add 15 to overall elapsed time
+  set time (time + 15)
   tick
 end
 
@@ -217,6 +226,7 @@ end
 
 ;determine disease-status for patients
 to update-disease-status
+  set new-disease-status "no"
   let prob-colonized-to-diseased .024 / 96 ;phi
   let alpha 0.5 / 96   ;;probability of becoming susceptible
   let theta 0.033 / 96 ;;probability of becoming resistant again
@@ -224,42 +234,48 @@ to update-disease-status
   let random-prob random-float 1
   let turnover 96 ;turnover for successful screening
 
-  if current-disease-status = "resistant"[
+  ;instead of writing many if elses. I added a and inside of each if statement. thus we know if we need to check or not.
+  ;If it is not a new disease status we check, else we dont.
+  if current-disease-status = "resistant" and new-disease-status = "no"[
     if random-prob < alpha[
       set current-disease-status "susceptible"
       set color brown
       set time-since-current-disease-status 0
+      set new-disease-status "yes"
     ]
   ]
   ;;probability of susceptible patients to become resistant
-  if current-disease-status = "susceptible"[ ;;if for now until have more elses to use ifelse
+  if current-disease-status = "susceptible" and new-disease-status = "no"[ ;;if for now until have more elses to use ifelse
       if random-prob < theta[ ;;same as above
        set current-disease-status "resistant"
        set color green
        set time-since-current-disease-status 0
+       set new-disease-status "yes"
     ]
   ]
-  if current-disease-status = "susceptible"[
+  if current-disease-status = "susceptible" and new-disease-status = "no"[
     susceptible-to-colonized
   ]
-  if current-disease-status = "colonized"[
+  if current-disease-status = "colonized" and new-disease-status = "no"[
     high-touch-shedding
     low-touch-shedding
     if random-prob < prob-colonized-to-diseased[
       set current-disease-status "diseased"
       set color violet
       set time-since-current-disease-status 0
+      set new-disease-status "yes"
     ]
   ]
-  if current-disease-status = "diseased"[ ;diseased to susceptible here: use epsilon.
+  if current-disease-status = "diseased" and new-disease-status = "no"[ ;diseased to susceptible here: use epsilon.
     high-touch-shedding
     low-touch-shedding
-      if random-prob < epsilon[
+      if random-prob < epsilon and time-since-treatment = 0[
         set time-since-current-disease-status 0
         ifelse random-float 1 < prob-succ-treat [set will-treat-succ "yes"][set will-treat-succ "no"]
         ifelse random-float 1 < sensitivity [
           set will-ID "yes"
           set time-since-succ-screening 0
+          set time-since-treatment 0 ;start the time for switching back to susceptible
           update-screening-times
         ][
           set will-ID "no"
@@ -267,12 +283,13 @@ to update-disease-status
           update-screening-times
         ]
       ]
-      if will-ID  = "yes" and will-treat-succ = "yes"[
+      if will-ID  = "yes" and will-treat-succ = "yes" and time-since-treatment >= 2880[ ;add aditional parameter that keeps track of time of being treated with CDiff. 2 day wait.
         set current-disease-status "susceptible"
         set color brown
         set time-since-current-disease-status 0
+        set new-disease-status "yes"
     ]
-      if will-ID = "no" and will-ID-no-count < 2[ ;IMPLEMENT THIS. two successive no's and then we are done.
+      if will-ID = "no" and will-ID-no-count < 2[ ;two successive no's and then we are done.
         set will-ID-no-count will-ID-no-count + 1
         if time-since-unsucc-screening > turnover [ ;after an unseccessful screen, symptomatic patient is screened again
           ifelse random-float 1 < sensitivity [ ;determines if the screening will work
@@ -286,8 +303,11 @@ to update-disease-status
         ]
       ]
     ]
+    ;final check here to increment the time-since-treatment so we implement the delay of disease status
+    if will-ID = "yes" and will-treat-succ = "yes"[
+      set time-since-treatment (time-since-treatment + 15)
+    ]
   ]
-  update-time
 end
 
 ;update times for patients
@@ -376,24 +396,11 @@ to low-touch-shedding
   ]
 end
 
-;cleaning high-touch every tick
+;cleaning high-touch. happens once a day. random percentage
 to clean-high-touch
-  let spores-killed-from-extra-cleaning 0.66 / 96 ;taken from Sulyok 2021. 66% of spores removed
+  let spores-killed-from-extra-cleaning .33 + (random-float (.99 - .33)) ;make the percentage of spores killed a random percentage in a range of .33-.99
   ask high-touch [
     set active-high-touch-level (active-high-touch-level - (active-high-touch-level * spores-killed-from-extra-cleaning))
-  ]
-end
-
-;treat .66/96 as a probability per tick if true .66/96 of spores are removed.
-to clean-high-touch-2
-  let chance-of-cleaning 0.66 / 96
-  let spores-killed-from-extra-cleaning 0.66 ;66% of spores removed
-  let random-num random-float 1
-
-  if random-num < chance-of-cleaning[
-    ask high-touch [
-      set active-high-touch-level (active-high-touch-level - (active-high-touch-level * spores-killed-from-extra-cleaning))
-    ]
   ]
 end
 
@@ -413,8 +420,9 @@ to susceptible-to-colonized
   ]
 
   ;create chances and random values
-  let chance-from-high-touch (B * (high-touch-level / (K + high-touch-level))) / 96 ;divide this by 96?
-  let chance-from-low-touch (B * (low-touch-level / (K + low-touch-level))) / 96 ;divide this by 96?
+  let chance-from-high-touch (B * (high-touch-level / (K + high-touch-level))) / 96
+  let chance-from-low-touch (B * (low-touch-level / (K + low-touch-level))) / 96
+
   let random-num random-float 1
   let random-num2 random-float 1
 
@@ -423,16 +431,17 @@ to susceptible-to-colonized
       set current-disease-status "colonized"
       set color blue
       set time-since-current-disease-status 0
+      set new-disease-status "yes"
     ]
   ][
     if random-num2 < chance-from-low-touch[
       set current-disease-status "colonized"
       set color blue
       set time-since-current-disease-status 0
+      set new-disease-status "yes"
     ]
   ]
 end
-
 
 
 
