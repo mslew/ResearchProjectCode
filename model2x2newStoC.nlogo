@@ -7,7 +7,8 @@ globals[
   low-touch ;;patches identifying low-touch frequency surfaces
   hallways ;hallways patches
   HCW-spawn-patch ;hallways where the HCWs spawn
-  time;
+  time ;master time
+  number-discharges ;number of discharges
 ]
 
 patients-own[
@@ -61,9 +62,11 @@ to go
     update-time
   ]
 
-  ;every day we clean high-touch
+  ;every day we clean high-touch. check to discharge patients. admit patients
   if time mod 1440 = 0[
+    admit-patients
     clean-high-touch
+    discharge-patients
   ]
   ;add 15 to overall elapsed time
   set time (time + 15)
@@ -168,10 +171,10 @@ end
 to set-initial-HCW
   let initial-healthcare 10
   create-HCWs initial-healthcare[
-   set size .75
-   set color black
-   set shape "person"
-   move-to one-of HCW-spawn-patch with [not any? HCWs-here]
+    set size .75
+    set color black
+    set shape "person"
+    move-to one-of HCW-spawn-patch with [not any? HCWs-here]
   ]
   ask HCWs[
     set HCW-zone HCW-patch-zone
@@ -412,10 +415,10 @@ to susceptible-to-colonized
   let low-touch-level 0 ;set this initially to 0
 
   ;set these high and low touch levels to the values from in the patients room
-  ask patch-at-heading-and-distance 90 1 [
+  ask patch-at-heading-and-distance 90 1 [ ;high touch
     set high-touch-level active-high-touch-level
   ]
-  ask patch-at-heading-and-distance 135 1[
+  ask patch-at-heading-and-distance 135 1[ ;low touch
     set low-touch-level active-low-touch-level
   ]
 
@@ -443,6 +446,123 @@ to susceptible-to-colonized
   ]
 end
 
+;discharge patients submodel
+to discharge-patients
+  let random-num random-float 1
+
+  ask patients[
+    if current-disease-status = "resistant"[
+      if random-num < 0.33[
+        if any? patients with [current-disease-status = "resistant"][
+          let patient-count count patients with [current-disease-status = "resistant"] ;this is to keep track of how many patients are getting discharged
+          set number-discharges number-discharges + patient-count ;add to total count
+          ask patients with [current-disease-status = "resistant"] [die]
+          clean-at-discharge
+        ]
+      ]
+    ]
+    if current-disease-status = "susceptible"[
+        if random-num < 0.15[
+          if any? patients with [current-disease-status = "susceptible"][
+            let patient-count count patients with [current-disease-status = "susceptible"] ;this is to keep track of how many patients are getting discharged
+            set number-discharges number-discharges + patient-count
+            ask patients with [current-disease-status = "susceptible"] [die]
+            clean-at-discharge
+        ]
+      ]
+    ]
+    if current-disease-status = "colonized"[
+      if random-num < 0.15[
+        if any? patients with [current-disease-status = "colonized"][
+          let patient-count count patients with [current-disease-status = "colonized"] ;this is to keep track of how many patients are getting discharged
+          set number-discharges number-discharges + patient-count
+          ask patients with [current-disease-status = "colonized"] [die]
+          clean-at-discharge
+        ]
+      ]
+    ]
+    if current-disease-status = "diseased"[
+      if random-num < 0.068[
+          if any? patients with [current-disease-status = "diseased"][
+            let patient-count count patients with [current-disease-status = "diseased"] ;this is to keep track of how many patients are getting discharged
+            set number-discharges number-discharges + patient-count
+            ask patients with [current-disease-status = "diseased"] [die]
+            clean-at-discharge
+        ]
+      ]
+    ]
+  ]
+end
+
+;admit patients if there is an empty room
+to admit-patients
+  let R-chance .75 ;percentage for resistant
+  let S-chance .09 ;susceptible
+  let C-chance .15 ;colonized
+  let D-chance .01 ;diseased
+  let n 0
+  let empty-rooms count patients-patch with [not any? patients-here]
+
+  while [n < empty-rooms][
+    let random-num random-float 1
+    if random-num < D-chance[ ;diseased
+      create-patients 1[
+        set size .75
+        set shape "person"
+        set current-disease-status "diseased"
+        set color violet
+        set time-since-current-disease-status 0
+        move-to one-of patients-patch with [not any? patients-here]
+      ]
+    ]
+    if random-num < S-chance[ ;susceptible
+      create-patients 1[
+        set size .75
+        set shape "person"
+        set current-disease-status "susceptible"
+        set color brown
+        set time-since-current-disease-status 0
+        move-to one-of patients-patch with [not any? patients-here]
+      ]
+    ]
+    if random-num < C-chance[ ;colonized
+      create-patients 1[
+        set size .75
+        set shape "person"
+        set current-disease-status "colonized"
+        set color blue
+        set time-since-current-disease-status 0
+        move-to one-of patients-patch with [not any? patients-here]
+      ]
+    ]
+    if random-num < R-chance[ ;resistant
+      create-patients 1[
+        set size .75
+        set shape "person"
+        set current-disease-status "resistant"
+        set color green
+        set time-since-current-disease-status 0
+        move-to one-of patients-patch with [not any? patients-here]
+      ]
+    ]
+    ;need another block here for a chance the number is greater than .75
+    set n n + 1
+  ]
+  set n 0
+end
+
+;cleaning sub-model at discharge. called within discharge-patients submodel
+to clean-at-discharge
+  let sigma .83 ;proportion of high-touch and low-touch spores killed due to disinfection upon discharge
+
+  ;ask surfaces to be cleaned at discharge
+  ask patch-at-heading-and-distance 90 1 [ ;high touch
+    set active-high-touch-level (active-high-touch-level - (active-high-touch-level * sigma))
+  ]
+  ask patch-at-heading-and-distance 135 1[ ;low touch
+    set active-low-touch-level (active-low-touch-level - (active-low-touch-level * sigma))
+  ]
+end
 
 
 
@@ -477,8 +597,8 @@ GRAPHICS-WINDOW
 7
 -9
 9
-0
-0
+1
+1
 1
 ticks
 30.0
@@ -593,6 +713,17 @@ sensitivity
 1
 NIL
 HORIZONTAL
+
+MONITOR
+9
+232
+165
+277
+number-of-discharges
+number-discharges
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
