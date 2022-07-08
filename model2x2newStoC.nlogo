@@ -16,9 +16,7 @@ patients-own[
   current-disease-status ;updates the current disease status of patients
   time-since-current-disease-status ;time of having this status
   length-of-stay ;length of stay in the room
-  patients-zone ;what zone of the ward the patient is in
-  time-since-visit
-  visit-time
+  patient-zone ;what zone of the ward the patient is in
   time-since-succ-screening ;what time since successful screening
   time-since-unsucc-screening ;what time since unsuccessful screening
   will-ID ;if a patient gets IDd for treatment
@@ -26,6 +24,9 @@ patients-own[
   will-ID-no-count ;count of how many times will-IDs are no
   new-disease-status ;this is solely used for the if statements in update-disease-status so they don't get called twice.
   time-since-treatment ;have some time here before going back to susceptible
+  HCW?
+  disease-status-at-last-visit ;patient disease status last time they got visited by a HCW
+  length-of-stay ;keeps track of the time that passes since last visit
 ]
 
 patches-own[
@@ -33,8 +34,10 @@ patches-own[
   initial-low-touch-level ;low-touch surface contamination level
   active-high-touch-level ;active high-touch surface contamination level
   active-low-touch-level ;active low-touch surface contamination level
-  HCW-patch-zone ;what zone a patient patch is in
+  patch-zone ;what zone a patient patch is in
   patient-status
+  time-since-visit
+  visit-time
 ]
 
 HCWs-own[
@@ -57,19 +60,20 @@ to setup
 end
 
 to go
+  visit-patients
   ask patients [
     update-disease-status
-    update-time
   ]
 
   ;every day we clean high-touch. check to discharge patients. admit patients
-  if time mod 1440 = 0[
-    admit-patients
+  if time mod 1440 = 0 and time > 0[
     clean-high-touch
     discharge-patients
+    admit-patients
   ]
   ;add 15 to overall elapsed time
   set time (time + 15)
+  update-time
   tick
 end
 
@@ -118,34 +122,34 @@ end
 ;this sets up the zones for each HCW to work in
 to HCW-zone-setup
   ask patches [
-    if (pxcor = -7 and (pycor = 8 or pycor = 5 or pycor = 2)) [set HCW-patch-zone 1]
-    if (pxcor = -4 and (pycor = 8 or pycor = 5 or pycor = 2)) [set HCW-patch-zone 2]
-    if (pxcor = -1 and (pycor = 8 or pycor = 5 or pycor = 2)) [set HCW-patch-zone 3]
-    if (pxcor = 2 and (pycor = 8 or pycor = 5 or pycor = 2)) [set HCW-patch-zone 4]
-    if (pxcor = 5 and (pycor = 8 or pycor = 5 or pycor = 2)) [set HCW-patch-zone 5]
+    if (pxcor = -7 and (pycor = 8 or pycor = 5 or pycor = 2)) [set patch-zone 1]
+    if (pxcor = -4 and (pycor = 8 or pycor = 5 or pycor = 2)) [set patch-zone 2]
+    if (pxcor = -1 and (pycor = 8 or pycor = 5 or pycor = 2)) [set patch-zone 3]
+    if (pxcor = 2 and (pycor = 8 or pycor = 5 or pycor = 2)) [set patch-zone 4]
+    if (pxcor = 5 and (pycor = 8 or pycor = 5 or pycor = 2)) [set patch-zone 5]
 
-    if (pxcor = -7 and (pycor = -1 or pycor = -4 or pycor = -7)) [set HCW-patch-zone 6]
-    if (pxcor = -4 and (pycor = -1 or pycor = -4 or pycor = -7)) [set HCW-patch-zone 7]
-    if (pxcor = -1 and (pycor = -1 or pycor = -4 or pycor = -7)) [set HCW-patch-zone 8]
-    if (pxcor = 2 and (pycor = -1 or pycor = -4 or pycor = -7)) [set HCW-patch-zone 9]
-    if (pxcor = 5 and (pycor = -1 or pycor = -4 or pycor = -7)) [set HCW-patch-zone 10]
+    if (pxcor = -7 and (pycor = -1 or pycor = -4 or pycor = -7)) [set patch-zone 6]
+    if (pxcor = -4 and (pycor = -1 or pycor = -4 or pycor = -7)) [set patch-zone 7]
+    if (pxcor = -1 and (pycor = -1 or pycor = -4 or pycor = -7)) [set patch-zone 8]
+    if (pxcor = 2 and (pycor = -1 or pycor = -4 or pycor = -7)) [set patch-zone 9]
+    if (pxcor = 5 and (pycor = -1 or pycor = -4 or pycor = -7)) [set patch-zone 10]
   ]
 end
 
 ;this is to assign patches were the HCWs spawn and set their zones
 to HCW-spawn-zone-setup
   ask patches[
-    if (pxcor = -8 and pycor = 8) [set HCW-patch-zone 1]
-    if (pxcor = -5 and pycor = 8) [set HCW-patch-zone 2]
-    if (pxcor = -2 and pycor = 8) [set HCW-patch-zone 3]
-    if (pxcor = 1 and pycor = 8) [set HCW-patch-zone 4]
-    if (pxcor = 4 and pycor = 8) [set HCW-patch-zone 5]
+    if (pxcor = -8 and pycor = 8) [set patch-zone 1]
+    if (pxcor = -5 and pycor = 8) [set patch-zone 2]
+    if (pxcor = -2 and pycor = 8) [set patch-zone 3]
+    if (pxcor = 1 and pycor = 8) [set patch-zone 4]
+    if (pxcor = 4 and pycor = 8) [set patch-zone 5]
 
-    if (pxcor = -8 and pycor = -1) [set HCW-patch-zone 6]
-    if (pxcor = -5 and pycor = -1) [set HCW-patch-zone 7]
-    if (pxcor = -2 and pycor = -1) [set HCW-patch-zone 8]
-    if (pxcor = 1 and pycor = -1) [set HCW-patch-zone 9]
-    if (pxcor = 4 and pycor = -1) [set HCW-patch-zone 10]
+    if (pxcor = -8 and pycor = -1) [set patch-zone 6]
+    if (pxcor = -5 and pycor = -1) [set patch-zone 7]
+    if (pxcor = -2 and pycor = -1) [set patch-zone 8]
+    if (pxcor = 1 and pycor = -1) [set patch-zone 9]
+    if (pxcor = 4 and pycor = -1) [set patch-zone 10]
   ]
 
   ;set the specific initial starting points for HCWs patches to be black
@@ -177,7 +181,7 @@ to set-initial-HCW
     move-to one-of HCW-spawn-patch with [not any? HCWs-here]
   ]
   ask HCWs[
-    set HCW-zone HCW-patch-zone
+    set HCW-zone patch-zone
   ]
 end
 
@@ -213,7 +217,7 @@ to set-initial-patients
     ]
   ]
   ask patients[
-   set patients-zone HCW-patch-zone
+   set patient-zone patch-zone
   ]
 end
 
@@ -311,12 +315,27 @@ to update-disease-status
       set time-since-treatment (time-since-treatment + 15)
     ]
   ]
+
+  if HCW? = "yes"[
+   set disease-status-at-last-visit current-disease-status
+  ]
 end
 
-;update times for patients
+;update times for patients and HCWs
 to update-time
-  set length-of-stay length-of-stay + 15
-  set time-since-current-disease-status time-since-current-disease-status + 15
+  ask patients[
+    set length-of-stay length-of-stay + 15
+    set time-since-current-disease-status time-since-current-disease-status + 15
+  ]
+  ask patients-patch[
+    ifelse any? HCWs-here[
+      set time-since-visit 0
+      set visit-time visit-time + 15
+    ][
+      set time-since-visit time-since-visit + 15
+      set visit-time 0
+    ]
+  ]
 end
 
 ;sub-model to update times for when a patient gets screened.
@@ -448,50 +467,65 @@ end
 
 ;discharge patients submodel
 to discharge-patients
+  let R-chance .33
+  let S-chance .15
+  let C-chance .15
+  let D-chance .068
   let random-num random-float 1
+  let number-of-D-patients-discharged 0
+  let number-of-C-patients-discharged 0
+  let number-of-S-patients-discharged 0
+  let number-of-R-patients-discharged 0
 
+  ;get the correct counts
   ask patients[
-    if current-disease-status = "resistant"[
-      if random-num < 0.33[
-        if any? patients with [current-disease-status = "resistant"][
-          let patient-count count patients with [current-disease-status = "resistant"] ;this is to keep track of how many patients are getting discharged
-          set number-discharges number-discharges + patient-count ;add to total count
-          ask patients with [current-disease-status = "resistant"] [die]
+    ifelse current-disease-status = "diseased"[
+      if random-num < D-chance[
+        let patient-count count patients with [current-disease-status = "diseased"] ;this is to keep track of how many patients have this disease status
+        set number-of-D-patients-discharged round(D-chance * patient-count)
+      ]
+    ][
+      ifelse current-disease-status = "colonized"[
+        if random-num < C-chance[
+          let patient-count count patients with [current-disease-status = "colonized"] ;this is to keep track of how many patients have this disease status
+          set number-of-C-patients-discharged round(C-chance * patient-count)
           clean-at-discharge
         ]
-      ]
-    ]
-    if current-disease-status = "susceptible"[
-        if random-num < 0.15[
-          if any? patients with [current-disease-status = "susceptible"][
-            let patient-count count patients with [current-disease-status = "susceptible"] ;this is to keep track of how many patients are getting discharged
-            set number-discharges number-discharges + patient-count
-            ask patients with [current-disease-status = "susceptible"] [die]
-            clean-at-discharge
-        ]
-      ]
-    ]
-    if current-disease-status = "colonized"[
-      if random-num < 0.15[
-        if any? patients with [current-disease-status = "colonized"][
-          let patient-count count patients with [current-disease-status = "colonized"] ;this is to keep track of how many patients are getting discharged
-          set number-discharges number-discharges + patient-count
-          ask patients with [current-disease-status = "colonized"] [die]
-          clean-at-discharge
-        ]
-      ]
-    ]
-    if current-disease-status = "diseased"[
-      if random-num < 0.068[
-          if any? patients with [current-disease-status = "diseased"][
-            let patient-count count patients with [current-disease-status = "diseased"] ;this is to keep track of how many patients are getting discharged
-            set number-discharges number-discharges + patient-count
-            ask patients with [current-disease-status = "diseased"] [die]
-            clean-at-discharge
+      ][
+        ifelse current-disease-status = "susceptible"[
+          if random-num < S-chance[
+            let patient-count count patients with [current-disease-status = "susceptible"] ;this is to keep track of how many patients have this disease status
+            set number-of-S-patients-discharged round(S-chance * patient-count)
+          ]
+        ][
+          if current-disease-status = "resistant"[
+            if random-num < R-chance[
+              let patient-count count patients with [current-disease-status = "resistant"] ;this is to keep track of how many patients have this disease status
+              set number-of-R-patients-discharged round(R-chance * patient-count)
+            ]
+          ]
         ]
       ]
     ]
   ]
+  ;display correct number
+  set number-discharges (number-discharges + number-of-D-patients-discharged + number-of-C-patients-discharged + number-of-S-patients-discharged + number-of-R-patients-discharged)
+  output-print number-of-D-patients-discharged
+  output-print number-of-C-patients-discharged
+  output-print number-of-S-patients-discharged
+  output-print number-of-R-patients-discharged
+
+  ;discharge
+  ask n-of number-of-D-patients-discharged patients with [current-disease-status = "diseased"] [die]
+  ask n-of number-of-C-patients-discharged patients with [current-disease-status = "colonized"] [die]
+  ask n-of number-of-S-patients-discharged patients with [current-disease-status = "susceptible"] [die]
+  ask n-of number-of-R-patients-discharged patients with [current-disease-status = "resistant"] [die]
+
+  ;clean
+  ask patients-patch with [not any? patients-here][
+    clean-at-discharge
+  ]
+
 end
 
 ;admit patients if there is an empty room
@@ -500,55 +534,44 @@ to admit-patients
   let S-chance .09 ;susceptible
   let C-chance .15 ;colonized
   let D-chance .01 ;diseased
-  let n 0
   let empty-rooms count patients-patch with [not any? patients-here]
 
-  while [n < empty-rooms][
+  create-patients empty-rooms[
     let random-num random-float 1
-    if random-num < D-chance[ ;diseased
-      create-patients 1[
-        set size .75
-        set shape "person"
-        set current-disease-status "diseased"
-        set color violet
-        set time-since-current-disease-status 0
-        move-to one-of patients-patch with [not any? patients-here]
-      ]
-    ]
-    if random-num < S-chance[ ;susceptible
-      create-patients 1[
+    ifelse random-num < D-chance[
+      set size .75
+      set shape "person"
+      set current-disease-status "diseased"
+      set color violet
+      set time-since-current-disease-status 0
+      move-to one-of patients-patch with [not any? patients-here]
+    ][
+      ifelse random-num < S-chance + D-chance[
         set size .75
         set shape "person"
         set current-disease-status "susceptible"
         set color brown
         set time-since-current-disease-status 0
         move-to one-of patients-patch with [not any? patients-here]
+      ][
+        ifelse random-num < S-chance + D-chance + C-chance[
+          set size .75
+          set shape "person"
+          set current-disease-status "colonized"
+          set color blue
+          set time-since-current-disease-status 0
+          move-to one-of patients-patch with [not any? patients-here]
+        ][
+          set size .75
+          set shape "person"
+          set current-disease-status "resistant"
+          set color green
+          set time-since-current-disease-status 0
+          move-to one-of patients-patch with [not any? patients-here]
+        ]
       ]
     ]
-    if random-num < C-chance[ ;colonized
-      create-patients 1[
-        set size .75
-        set shape "person"
-        set current-disease-status "colonized"
-        set color blue
-        set time-since-current-disease-status 0
-        move-to one-of patients-patch with [not any? patients-here]
-      ]
-    ]
-    if random-num < R-chance[ ;resistant
-      create-patients 1[
-        set size .75
-        set shape "person"
-        set current-disease-status "resistant"
-        set color green
-        set time-since-current-disease-status 0
-        move-to one-of patients-patch with [not any? patients-here]
-      ]
-    ]
-    ;need another block here for a chance the number is greater than .75
-    set n n + 1
   ]
-  set n 0
 end
 
 ;cleaning sub-model at discharge. called within discharge-patients submodel
@@ -563,6 +586,185 @@ to clean-at-discharge
     set active-low-touch-level (active-low-touch-level - (active-low-touch-level * sigma))
   ]
 end
+
+to visit-patients ;;make time-since-visit 0 everytime a HCW goes to a room
+  let n 1
+  ask patients [set HCW? "no"]
+  while [n <= 10][
+    ask HCWs with [HCW-zone = n][
+    ifelse any? patients with [patient-zone = n and disease-status-at-last-visit = "diseased"]
+    [let prob1 random-float 1
+      ifelse prob1 < 0.6[
+        move-to one-of patients with [patient-zone = n and disease-status-at-last-visit = "diseased"]
+        if visit-time >= 30 [visit-another-patient]
+      ]
+      [ifelse any? patients with [patient-zone = n and time-since-visit >= 60]
+        [move-to one-of patients with [patient-zone = n and time-since-visit >= 60]
+          if visit-time >= 30 [visit-another-patient]
+       ]
+        [ifelse any? patients with [patient-zone = n and disease-status-at-last-visit = "colonized" or disease-status-at-last-visit = "susceptible"]
+          [ifelse any? patients with [patient-zone = n and disease-status-at-last-visit = "colonized" and disease-status-at-last-visit = "susceptible"]
+           [let prob2 random-float 1
+            ifelse prob2 < 0.5
+            [move-to one-of patients with [patient-zone = n and disease-status-at-last-visit = "colonized"]
+                if visit-time >= 30 [visit-another-patient]
+            ]
+            [move-to one-of patients with [patient-zone = n and disease-status-at-last-visit = "susceptible"]
+                if visit-time >= 30 [visit-another-patient]
+            ]
+           ]
+           [if any? patients with [patient-zone = n and disease-status-at-last-visit = "colonized"]
+            [move-to one-of patients with [patient-zone = n and disease-status-at-last-visit = "colonized"]
+                if visit-time >= 30 [visit-another-patient]
+            ]
+            if any? patients with [patient-zone = n and disease-status-at-last-visit = "susceptible"]
+            [move-to one-of patients with [patient-zone = n and disease-status-at-last-visit = "susceptible"]
+                if visit-time >= 30 [visit-another-patient]
+          ]
+           ]
+          ]
+          [ask patients-patch with [patch-zone = n][
+            ifelse any? patients with [patient-zone = n and disease-status-at-last-visit = "resistant"][
+              move-to one-of patients with [patient-zone = n and disease-status-at-last-visit = "resistant"]
+              if visit-time >= 30 [visit-another-patient]]
+            [visit-another-patient]
+            ]
+          ]
+        ]
+      ]
+    ]
+    [ifelse any? patients with [patient-zone = n and time-since-visit >= 60]
+      [move-to one-of patients with [patient-zone = n and time-since-visit >= 60]]
+      [ifelse any? patients with [patient-zone = n and disease-status-at-last-visit = "colonized" or disease-status-at-last-visit = "susceptible"]
+        [ifelse any? patients with [patient-zone = n and disease-status-at-last-visit = "colonized" and disease-status-at-last-visit = "susceptible"]
+           [let prob2 random-float 1
+            ifelse prob2 < 0.5
+            [move-to one-of patients with [patient-zone = n and disease-status-at-last-visit = "colonized"]
+            if visit-time >= 30 [visit-another-patient]
+            ]
+            [move-to one-of patients with [patient-zone = n and disease-status-at-last-visit = "susceptible"]
+            if visit-time >= 30 [visit-another-patient]
+            ]
+            ]
+           [if any? patients with [patient-zone = n and disease-status-at-last-visit = "colonized"]
+            [move-to one-of patients with [patient-zone = n and disease-status-at-last-visit = "colonized"]
+            if visit-time >= 30 [visit-another-patient]
+           ]
+           if any? patients with [patient-zone = n and disease-status-at-last-visit = "susceptible"]
+            [move-to one-of patients with [patient-zone = n and disease-status-at-last-visit = "susceptible"]
+              if visit-time >= 30 [visit-another-patient]
+           ]
+           ]
+          ]
+        [ask patients-patch with [patch-zone = n][
+            ifelse any? patients with [patient-zone = n and disease-status-at-last-visit = "resistant"][
+              ask HCWs with [HCW-zone = n][move-to one-of patients with [patient-zone = n and disease-status-at-last-visit = "resistant"]]
+              if visit-time >= 30 [visit-another-patient]]
+            [visit-another-patient]
+            ]
+        ]
+      ]
+    ]
+    ]
+    ;ask HCWs [if [pcolor] of patch-here = white [ask patients with [set time-since-visit 0]]]
+         ;;need a way of changing just one patient's time-since-visit
+    ;ask patients-patch with [[pxcor] of patch-here = [xcor] of HCWs and [pycor] of patch-here = [ycor] of HCWs][set time-since-visit 0]
+         ;;can't ask a patch
+    ;ask patients with [xcor = [pxcor] of patch-here and ycor = [pycor] of patch-here][set time-since-visit 0]
+    ;ask patients-patch [if any? turtles-on HCWs [ask patients with [any? HCWs patch-here] [set time-since-visit 0]]]
+    set n n + 1
+  ]
+  set n 1
+  ask patients with [HCW? = "yes"] [set disease-status-at-last-visit current-disease-status]
+end
+
+to visit-another-patient
+  let n 1
+  ask patients [set HCW? "no"]
+  while [n <= 10][
+    ask HCWs with [HCW-zone = n][
+    ifelse any? patients with [patient-zone = n and disease-status-at-last-visit = "diseased"]
+    [let prob1 random-float 1
+      ifelse prob1 < 0.6[
+        move-to one-of patients with [patient-zone = n and disease-status-at-last-visit = "diseased"]
+      ]
+      [ifelse any? patients with [patient-zone = n and time-since-visit >= 60]
+        [move-to one-of patients with [patient-zone = n and time-since-visit >= 60]
+       ]
+        [ifelse any? patients with [patient-zone = n and disease-status-at-last-visit = "colonized" or disease-status-at-last-visit = "susceptible"]
+          [ifelse any? patients with [patient-zone = n and disease-status-at-last-visit = "colonized" and disease-status-at-last-visit = "susceptible"]
+           [let prob2 random-float 1
+            ifelse prob2 < 0.5
+            [move-to one-of patients with [patient-zone = n and disease-status-at-last-visit = "colonized"]
+            ]
+            [move-to one-of patients with [patient-zone = n and disease-status-at-last-visit = "susceptible"]
+            ]
+           ]
+           [if any? patients with [patient-zone = n and disease-status-at-last-visit = "colonized"]
+            [move-to one-of patients with [patient-zone = n and disease-status-at-last-visit = "colonized"]
+            ]
+            if any? patients with [patient-zone = n and disease-status-at-last-visit = "susceptible"]
+            [move-to one-of patients with [patient-zone = n and disease-status-at-last-visit = "susceptible"]
+          ]
+           ]
+          ]
+          [ask patients-patch with [patch-zone = n][
+            if any? patients with [patient-zone = n and disease-status-at-last-visit = "resistant"][
+              move-to one-of patients with [patient-zone = n and disease-status-at-last-visit = "resistant"]]
+            ]
+          ]
+        ]
+      ]
+    ]
+    [ifelse any? patients with [patient-zone = n and time-since-visit >= 60]
+      [move-to one-of patients with [patient-zone = n and time-since-visit >= 60]]
+      [ifelse any? patients with [patient-zone = n and disease-status-at-last-visit = "colonized" or disease-status-at-last-visit = "susceptible"]
+        [ifelse any? patients with [patient-zone = n and disease-status-at-last-visit = "colonized" and disease-status-at-last-visit = "susceptible"]
+           [let prob2 random-float 1
+            ifelse prob2 < 0.5
+            [move-to one-of patients with [patient-zone = n and disease-status-at-last-visit = "colonized"]
+            ]
+            [move-to one-of patients with [patient-zone = n and disease-status-at-last-visit = "susceptible"]
+            ]
+            ]
+           [if any? patients with [patient-zone = n and disease-status-at-last-visit = "colonized"]
+            [move-to one-of patients with [patient-zone = n and disease-status-at-last-visit = "colonized"]
+           ]
+           if any? patients with [patient-zone = n and disease-status-at-last-visit = "susceptible"]
+            [move-to one-of patients with [patient-zone = n and disease-status-at-last-visit = "susceptible"]
+           ]
+           ]
+          ]
+        [ask patients-patch with [patch-zone = n][
+            if any? patients with [patient-zone = n and disease-status-at-last-visit = "resistant"][
+              ask HCWs with [HCW-zone = n][move-to one-of patients with [patient-zone = n and disease-status-at-last-visit = "resistant"]]]
+            ]
+        ]
+      ]
+    ]
+    ]
+    set n n + 1
+  ]
+  set n 1
+  ask patients with [HCW? = "yes"] [set disease-status-at-last-visit current-disease-status]
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
