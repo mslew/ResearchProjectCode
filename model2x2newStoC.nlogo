@@ -241,8 +241,6 @@ to update-disease-status
   let random-prob random-float 1
   let turnover 96 ;turnover for successful screening
 
-  ;instead of writing many if elses. I added a and inside of each if statement. thus we know if we need to check or not.
-  ;If it is not a new disease status we check, else we dont.
   if current-disease-status = "resistant" and new-disease-status = "no"[
     if random-prob < alpha[
       set current-disease-status "susceptible"
@@ -251,7 +249,6 @@ to update-disease-status
       set new-disease-status "yes"
     ]
   ]
-  ;;probability of susceptible patients to become resistant
   if current-disease-status = "susceptible" and new-disease-status = "no"[ ;;if for now until have more elses to use ifelse
       if random-prob < theta[ ;;same as above
        set current-disease-status "resistant"
@@ -479,28 +476,27 @@ to discharge-patients
 
   ;get the correct counts
   ask patients[
-    ifelse current-disease-status = "diseased"[
+    ifelse disease-status-at-last-visit = "diseased"[
       if random-num < D-chance[
-        let patient-count count patients with [current-disease-status = "diseased"] ;this is to keep track of how many patients have this disease status
+        let patient-count count patients with [disease-status-at-last-visit = "diseased"] ;this is to keep track of how many patients have this disease status
         set number-of-D-patients-discharged round(D-chance * patient-count)
       ]
     ][
-      ifelse current-disease-status = "colonized"[
+      ifelse disease-status-at-last-visit = "colonized"[
         if random-num < C-chance[
-          let patient-count count patients with [current-disease-status = "colonized"] ;this is to keep track of how many patients have this disease status
+          let patient-count count patients with [disease-status-at-last-visit = "colonized"] ;this is to keep track of how many patients have this disease status
           set number-of-C-patients-discharged round(C-chance * patient-count)
-          clean-at-discharge
         ]
       ][
-        ifelse current-disease-status = "susceptible"[
+        ifelse disease-status-at-last-visit = "susceptible"[
           if random-num < S-chance[
-            let patient-count count patients with [current-disease-status = "susceptible"] ;this is to keep track of how many patients have this disease status
+            let patient-count count patients with [disease-status-at-last-visit = "susceptible"] ;this is to keep track of how many patients have this disease status
             set number-of-S-patients-discharged round(S-chance * patient-count)
           ]
         ][
-          if current-disease-status = "resistant"[
+          if disease-status-at-last-visit = "resistant"[
             if random-num < R-chance[
-              let patient-count count patients with [current-disease-status = "resistant"] ;this is to keep track of how many patients have this disease status
+              let patient-count count patients with [disease-status-at-last-visit = "resistant"] ;this is to keep track of how many patients have this disease status
               set number-of-R-patients-discharged round(R-chance * patient-count)
             ]
           ]
@@ -514,12 +510,13 @@ to discharge-patients
   output-print number-of-C-patients-discharged
   output-print number-of-S-patients-discharged
   output-print number-of-R-patients-discharged
+  output-print "-------------------------------"
 
   ;discharge
-  ask n-of number-of-D-patients-discharged patients with [current-disease-status = "diseased"] [die]
-  ask n-of number-of-C-patients-discharged patients with [current-disease-status = "colonized"] [die]
-  ask n-of number-of-S-patients-discharged patients with [current-disease-status = "susceptible"] [die]
-  ask n-of number-of-R-patients-discharged patients with [current-disease-status = "resistant"] [die]
+  ask n-of number-of-D-patients-discharged patients with [disease-status-at-last-visit = "diseased"] [die]
+  ask n-of number-of-C-patients-discharged patients with [disease-status-at-last-visit = "colonized"] [die]
+  ask n-of number-of-S-patients-discharged patients with [disease-status-at-last-visit = "susceptible"] [die]
+  ask n-of number-of-R-patients-discharged patients with [disease-status-at-last-visit = "resistant"] [die]
 
   ;clean
   ask patients-patch with [not any? patients-here][
@@ -542,6 +539,7 @@ to admit-patients
       set size .75
       set shape "person"
       set current-disease-status "diseased"
+      set disease-status-at-last-visit "diseased"
       set color violet
       set time-since-current-disease-status 0
       move-to one-of patients-patch with [not any? patients-here]
@@ -550,6 +548,7 @@ to admit-patients
         set size .75
         set shape "person"
         set current-disease-status "susceptible"
+        set disease-status-at-last-visit "susceptible"
         set color brown
         set time-since-current-disease-status 0
         move-to one-of patients-patch with [not any? patients-here]
@@ -558,6 +557,7 @@ to admit-patients
           set size .75
           set shape "person"
           set current-disease-status "colonized"
+          set disease-status-at-last-visit "colonized"
           set color blue
           set time-since-current-disease-status 0
           move-to one-of patients-patch with [not any? patients-here]
@@ -565,11 +565,15 @@ to admit-patients
           set size .75
           set shape "person"
           set current-disease-status "resistant"
+          set disease-status-at-last-visit "resistant"
           set color green
           set time-since-current-disease-status 0
           move-to one-of patients-patch with [not any? patients-here]
         ]
       ]
+    ]
+    ask patients[
+      set patient-zone patch-zone
     ]
   ]
 end
@@ -587,6 +591,7 @@ to clean-at-discharge
   ]
 end
 
+;this is the HCW movement.
 to visit-patients ;;make time-since-visit 0 everytime a HCW goes to a room
   let n 1
   ask patients [set HCW? "no"]
@@ -675,9 +680,10 @@ to visit-patients ;;make time-since-visit 0 everytime a HCW goes to a room
     set n n + 1
   ]
   set n 1
-  ask patients with [HCW? = "yes"] [set disease-status-at-last-visit current-disease-status]
+  ask patients with [any? HCWs-here] [set disease-status-at-last-visit current-disease-status]
 end
 
+;visit another patient block here. same logic as above.
 to visit-another-patient
   let n 1
   ask patients [set HCW? "no"]
@@ -746,10 +752,8 @@ to visit-another-patient
     set n n + 1
   ]
   set n 1
-  ask patients with [HCW? = "yes"] [set disease-status-at-last-visit current-disease-status]
+  ask patients with [any? HCWs-here] [set disease-status-at-last-visit current-disease-status]
 end
-
-
 
 
 
