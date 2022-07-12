@@ -42,6 +42,7 @@ patches-own[
 
 HCWs-own[
   HCW-zone ;what zone the HCWs work in
+  contam-level ;level of contamination per HCW
 ]
 
 to setup
@@ -61,6 +62,8 @@ end
 
 to go
   visit-patients
+  contam-HCWs
+  HCW-shed
   ask patients [
     update-disease-status
   ]
@@ -755,6 +758,51 @@ to visit-another-patient
   ask patients with [any? HCWs-here] [set disease-status-at-last-visit current-disease-status]
 end
 
+;this is the submodel to contaminate the HCWs
+to contam-HCWs
+  ;from patients
+  ask HCWs with [any? patients-here][
+    let contam 0
+    ask patients-here[
+      ifelse current-disease-status = "colonized"[
+        set contam (contam + .0001)
+      ][
+        if current-disease-status = "diseased"[
+          set contam (contam + .0002)
+        ]
+      ]
+    ]
+    if contam > 0 [ ;if there is no contam then we dont update
+      set contam-level contam
+    ]
+  ]
+
+  ;from surfaces
+  ask HCWs with [any? patients-here][
+    let random-num random-float 1
+    let HCW-high-touch-contam 0
+    let HCW-low-touch-contam 0
+    ask patch-at-heading-and-distance 90 1 [set HCW-high-touch-contam active-high-touch-level] ;high touch
+    ask patch-at-heading-and-distance 135 1 [set HCW-low-touch-contam active-low-touch-level] ;low touch
+    set contam-level (contam-level + (HCW-high-touch-contam * .001)) ;assume that an HCW will always touch a high touch when they visit a room. takes .1% of spores
+    if random-num < .5[ ;50 percent chance to touch a low-touch
+      set contam-level (contam-level + (HCW-low-touch-contam * .001)) ;takes .1% of spores
+    ]
+    set contam-level (contam-level - (contam-level * HCW-decontam-rate)) ;deconaminate rate
+  ]
+end
+
+;this is the submodel for HCW's to shed spores on surfaces
+to HCW-shed
+  ask HCWs with [any? patients-here][
+    let high-touch-contam 0
+    let low-touch-contam 0
+    set high-touch-contam contam-level
+    set low-touch-contam (contam-level / 2)
+    ask patch-at-heading-and-distance 90 1 [set active-high-touch-level (active-high-touch-level + high-touch-contam) ] ;sets patch's level 1 grid southeast of patient. add more spores
+    ask patch-at-heading-and-distance 135 1 [set active-low-touch-level (active-low-touch-level + low-touch-contam)] ;sets patch's level 1 grid southeast of patient. add more spores
+  ]
+end
 
 
 
@@ -803,17 +851,17 @@ GRAPHICS-WINDOW
 7
 -9
 9
-1
-1
+0
+0
 1
 ticks
 30.0
 
 BUTTON
-5
-28
-68
-61
+8
+14
+71
+47
 setup
 setup
 NIL
@@ -857,10 +905,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-70
-28
-133
-61
+73
+14
+136
+47
 go
 go
 T
@@ -874,10 +922,10 @@ NIL
 1
 
 BUTTON
-135
-28
-220
-61
+138
+14
+223
+47
 go-once
 go
 NIL
@@ -930,6 +978,21 @@ number-discharges
 17
 1
 11
+
+SLIDER
+9
+59
+219
+92
+HCW-decontam-rate
+HCW-decontam-rate
+0
+1
+0.01
+.01
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
