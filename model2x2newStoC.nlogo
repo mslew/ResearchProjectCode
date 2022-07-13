@@ -9,6 +9,7 @@ globals[
   HCW-spawn-patch ;hallways where the HCWs spawn
   time ;master time
   number-discharges ;number of discharges
+  total-HCW-contam ;total HCW contamination
 ]
 
 patients-own[
@@ -63,7 +64,8 @@ end
 to go
   visit-patients
   contam-HCWs
-  HCW-shed
+  HCW-shed-contam
+  decontaminate-HCWs
   ask patients [
     update-disease-status
   ]
@@ -179,7 +181,7 @@ to set-initial-HCW
   let initial-healthcare 10
   create-HCWs initial-healthcare[
     set size .75
-    set color black
+    set color 47
     set shape "person"
     move-to one-of HCW-spawn-patch with [not any? HCWs-here]
   ]
@@ -509,11 +511,6 @@ to discharge-patients
   ]
   ;display correct number
   set number-discharges (number-discharges + number-of-D-patients-discharged + number-of-C-patients-discharged + number-of-S-patients-discharged + number-of-R-patients-discharged)
-  output-print number-of-D-patients-discharged
-  output-print number-of-C-patients-discharged
-  output-print number-of-S-patients-discharged
-  output-print number-of-R-patients-discharged
-  output-print "-------------------------------"
 
   ;discharge
   ask n-of number-of-D-patients-discharged patients with [disease-status-at-last-visit = "diseased"] [die]
@@ -758,52 +755,109 @@ to visit-another-patient
   ask patients with [any? HCWs-here] [set disease-status-at-last-visit current-disease-status]
 end
 
-;this is the submodel to contaminate the HCWs
+;this is the submodel to contaminate the HCWs from patient
 to contam-HCWs
-  ;from patients
+  let contacts-per-day 20 / 96
+  let colonized-spores-per-contact .006 ;this is how many spores are added per cm^2
+  let diseased-spores-per-contact .013 ;this is how many spores are added per cm^2
+
   ask HCWs with [any? patients-here][
+    let random-num random-float 1
     let contam 0
     ask patients-here[
-      ifelse current-disease-status = "colonized"[
-        set contam (contam + .0001)
-      ][
-        if current-disease-status = "diseased"[
-          set contam (contam + .0002)
+      if current-disease-status = "colonized"[
+        if random-num < contacts-per-day[
+          set contam (contam + colonized-spores-per-contact)
+        ]
+      ]
+      if current-disease-status = "diseased"[
+        if random-num < contacts-per-day[
+          set contam (contam + diseased-spores-per-contact)
         ]
       ]
     ]
-    if contam > 0 [ ;if there is no contam then we dont update
-      set contam-level contam
-    ]
-  ]
-
-  ;from surfaces
-  ask HCWs with [any? patients-here][
-    let random-num random-float 1
-    let HCW-high-touch-contam 0
-    let HCW-low-touch-contam 0
-    ask patch-at-heading-and-distance 90 1 [set HCW-high-touch-contam active-high-touch-level] ;high touch
-    ask patch-at-heading-and-distance 135 1 [set HCW-low-touch-contam active-low-touch-level] ;low touch
-    set contam-level (contam-level + (HCW-high-touch-contam * .001)) ;assume that an HCW will always touch a high touch when they visit a room. takes .1% of spores
-    if random-num < .5[ ;50 percent chance to touch a low-touch
-      set contam-level (contam-level + (HCW-low-touch-contam * .001)) ;takes .1% of spores
-    ]
-    set contam-level (contam-level - (contam-level * HCW-decontam-rate)) ;deconaminate rate
+    set contam-level (contam-level + contam)
   ]
 end
 
-;this is the submodel for HCW's to shed spores on surfaces
-to HCW-shed
+;this is the submodel for HCW's to shed spores on surfaces or gain spores depending on spore count
+to HCW-shed-contam ;HCW either gaines spores or sheds spores depending on amount
+  let high-touch-chance 47.12 / 96
+  let low-touch-chance 27.55 / 96
+  let spore-count 0.001
+
   ask HCWs with [any? patients-here][
-    let high-touch-contam 0
-    let low-touch-contam 0
-    set high-touch-contam contam-level
-    set low-touch-contam (contam-level / 2)
-    ask patch-at-heading-and-distance 90 1 [set active-high-touch-level (active-high-touch-level + high-touch-contam) ] ;sets patch's level 1 grid southeast of patient. add more spores
-    ask patch-at-heading-and-distance 135 1 [set active-low-touch-level (active-low-touch-level + low-touch-contam)] ;sets patch's level 1 grid southeast of patient. add more spores
+    let random-num1 random-float 1
+    let random-num2 random-float 1
+    let high-touch-level 0
+    let low-touch-level 0
+    ask patch-at-heading-and-distance 90 1 [set high-touch-level active-high-touch-level]
+    ask patch-at-heading-and-distance 135 1 [set low-touch-level active-low-touch-level]
+    if random-num1 < high-touch-chance[
+      if high-touch-level > contam-level[ ;if there are more spores on the high-touch surface then HCW gain spores and high-touch loses spores
+        set contam-level (contam-level + (active-high-touch-level * spore-count))
+        ask patch-at-heading-and-distance 90 1 [set active-high-touch-level (active-high-touch-level - (active-high-touch-level * spore-count))]
+      ]
+      if high-touch-level < contam-level[ ;if there are less spores on the low-touch surface then HCW loses spores and high-touch gains spores
+        set contam-level (contam-level - (contam-level * spore-count))
+        ask patch-at-heading-and-distance 90 1 [set active-high-touch-level (active-high-touch-level + (active-high-touch-level * spore-count))]
+      ]
+    ]
+    if random-num2 < low-touch-chance[
+      if low-touch-level > contam-level[ ;if there are more spores on the low-touch surface then HCW gain spores and low-touch loses spores
+        set contam-level (contam-level + (contam-level * spore-count))
+        ask patch-at-heading-and-distance 135 1 [set active-low-touch-level (active-low-touch-level - (active-low-touch-level * spore-count))]
+      ]
+      if low-touch-level < contam-level[ ;if there are less spores on the low-touch surgace then HCW loses spores and low-touch gains spores
+        set contam-level (contam-level - (contam-level * spore-count))
+        ask patch-at-heading-and-distance 135 1 [set active-low-touch-level (active-low-touch-level + (active-low-touch-level * spore-count))]
+      ]
+    ]
   ]
 end
 
+;this is the cleaning section where HCWs can lose spores
+to decontaminate-HCWs
+  ask HCWs with [any? patients-here][
+    let random-num-for-decom random-float 1
+    let random-num-for-soap random-float 1
+    let probability-to-decontaminate 0
+    let if-diseased-patient "no"
+    ask patients-here[
+      ifelse current-disease-status = "resistant" or current-disease-status = "susceptible" or current-disease-status = "colonized"[
+        set probability-to-decontaminate .4
+      ][
+        if current-disease-status = "diseased"[
+          set probability-to-decontaminate 1
+          set if-diseased-patient "yes"
+        ]
+      ]
+    ]
+    ;cleaning section
+    if random-num-for-decom < probability-to-decontaminate[
+      ifelse random-num-for-soap < .5 or if-diseased-patient = "yes"[
+        set contam-level (contam-level - (contam-level * .9))
+      ][
+        set contam-level (contam-level - (contam-level * .2))
+      ]
+    ]
+    set total-HCW-contam sum [contam-level] of HCWs ;this is for the plot graph
+  ]
+
+  ;change color based on contam levels
+  ask HCWs [
+   ;here is the block for changing colors
+    if contam-level > 0 and contam-level <= 0.05[
+      set color 47 ;set HCW color to low level color 7
+    ]
+    if contam-level > 0.05 and contam-level <= 0.1[
+      set color 46 ;set HCW color to medium level color 6
+    ]
+    if contam-level > 0.1[
+      set color 45 ;set HCW color to high level color 5
+    ]
+  ]
+end
 
 
 
@@ -993,6 +1047,24 @@ HCW-decontam-rate
 1
 NIL
 HORIZONTAL
+
+PLOT
+9
+283
+209
+433
+total-HCW-contam-level
+NIL
+NIL
+0.0
+30.0
+0.0
+0.05
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot total-HCW-contam"
 
 @#$#@#$#@
 ## WHAT IS IT?
