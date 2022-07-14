@@ -181,8 +181,8 @@ to set-initial-HCW
   let initial-healthcare 10
   create-HCWs initial-healthcare[
     set size .75
-    set color 47
-    set shape "person"
+    set color yellow
+    set shape "face happy"
     move-to one-of HCW-spawn-patch with [not any? HCWs-here]
   ]
   ask HCWs[
@@ -795,22 +795,30 @@ to HCW-shed-contam ;HCW either gaines spores or sheds spores depending on amount
     ask patch-at-heading-and-distance 135 1 [set low-touch-level active-low-touch-level]
     if random-num1 < high-touch-chance[
       if high-touch-level > contam-level[ ;if there are more spores on the high-touch surface then HCW gain spores and high-touch loses spores
-        set contam-level (contam-level + (active-high-touch-level * spore-count))
-        ask patch-at-heading-and-distance 90 1 [set active-high-touch-level (active-high-touch-level - (active-high-touch-level * spore-count))]
+        if contam-level > spore-count and active-high-touch-level > spore-count[ ;only transfer if surfaces have more spores than transfer rate
+          set contam-level (active-high-touch-level + spore-count)
+          ask patch-at-heading-and-distance 90 1 [set active-high-touch-level (active-high-touch-level - spore-count)]
+        ]
       ]
       if high-touch-level < contam-level[ ;if there are less spores on the low-touch surface then HCW loses spores and high-touch gains spores
-        set contam-level (contam-level - (contam-level * spore-count))
-        ask patch-at-heading-and-distance 90 1 [set active-high-touch-level (active-high-touch-level + (active-high-touch-level * spore-count))]
+          if contam-level > spore-count and active-high-touch-level > spore-count[
+            set contam-level (active-high-touch-level - spore-count)
+            ask patch-at-heading-and-distance 90 1 [set active-high-touch-level (active-high-touch-level + spore-count)]
+        ]
       ]
     ]
     if random-num2 < low-touch-chance[
       if low-touch-level > contam-level[ ;if there are more spores on the low-touch surface then HCW gain spores and low-touch loses spores
-        set contam-level (contam-level + (contam-level * spore-count))
-        ask patch-at-heading-and-distance 135 1 [set active-low-touch-level (active-low-touch-level - (active-low-touch-level * spore-count))]
+        if contam-level > spore-count and active-high-touch-level > spore-count[
+          set contam-level (active-low-touch-level + spore-count)
+          ask patch-at-heading-and-distance 9135 1 [set active-low-touch-level (active-low-touch-level - spore-count)]
+        ]
       ]
       if low-touch-level < contam-level[ ;if there are less spores on the low-touch surgace then HCW loses spores and low-touch gains spores
-        set contam-level (contam-level - (contam-level * spore-count))
-        ask patch-at-heading-and-distance 135 1 [set active-low-touch-level (active-low-touch-level + (active-low-touch-level * spore-count))]
+        if contam-level > spore-count and active-high-touch-level > spore-count[
+          set contam-level (active-low-touch-level - spore-count)
+          ask patch-at-heading-and-distance 9135 1 [set active-low-touch-level (active-low-touch-level + spore-count)]
+        ]
       ]
     ]
   ]
@@ -836,9 +844,9 @@ to decontaminate-HCWs
     ;cleaning section
     if random-num-for-decom < probability-to-decontaminate[
       ifelse random-num-for-soap < .5 or if-diseased-patient = "yes"[
-        set contam-level (contam-level - (contam-level * .9))
+        set contam-level (contam-level - (contam-level * .9)) ;soap
       ][
-        set contam-level (contam-level - (contam-level * .2))
+        set contam-level (contam-level - (contam-level * .2)) ;hand sanitizer
       ]
     ]
     set total-HCW-contam sum [contam-level] of HCWs ;this is for the plot graph
@@ -847,19 +855,20 @@ to decontaminate-HCWs
   ;change color based on contam levels
   ask HCWs [
    ;here is the block for changing colors
-    if contam-level > 0 and contam-level <= 0.05[
-      set color 47 ;set HCW color to low level color 7
+    if contam-level > 0 and contam-level <= 0.0005[
+      set shape "face happy"
+      ;set color 47 ;set HCW color to low level color 7
     ]
-    if contam-level > 0.05 and contam-level <= 0.1[
-      set color 46 ;set HCW color to medium level color 6
+    if contam-level > 0.0005 and contam-level <= 0.001[
+      set shape "face neutral"
+      ;set color 46 ;set HCW color to medium level color 6
     ]
-    if contam-level > 0.1[
-      set color 45 ;set HCW color to high level color 5
+    if contam-level > 0.001[
+      set shape "face sad"
+      ;set color 45 ;set HCW color to high level color 5
     ]
   ]
 end
-
-
 
 
 
