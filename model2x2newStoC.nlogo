@@ -793,31 +793,33 @@ to HCW-shed-contam ;HCW either gaines spores or sheds spores depending on amount
     let low-touch-level 0
     ask patch-at-heading-and-distance 90 1 [set high-touch-level active-high-touch-level]
     ask patch-at-heading-and-distance 135 1 [set low-touch-level active-low-touch-level]
-    if random-num1 < high-touch-chance[
+    if random-num1 < high-touch-chance[ ;change this to if else
       if high-touch-level > contam-level[ ;if there are more spores on the high-touch surface then HCW gain spores and high-touch loses spores
-        if contam-level > spore-count and active-high-touch-level > spore-count[ ;only transfer if surfaces have more spores than transfer rate
+        ifelse contam-level > spore-count and active-high-touch-level > spore-count[ ;only transfer if surfaces have more spores than transfer rate
           set contam-level (active-high-touch-level + spore-count)
           ask patch-at-heading-and-distance 90 1 [set active-high-touch-level (active-high-touch-level - spore-count)]
-        ]
-      ]
-      if high-touch-level < contam-level[ ;if there are less spores on the low-touch surface then HCW loses spores and high-touch gains spores
-          if contam-level > spore-count and active-high-touch-level > spore-count[
-            set contam-level (active-high-touch-level - spore-count)
-            ask patch-at-heading-and-distance 90 1 [set active-high-touch-level (active-high-touch-level + spore-count)]
+        ][
+          if high-touch-level < contam-level[ ;if there are less spores on the low-touch surface then HCW loses spores and high-touch gains spores
+            if contam-level > spore-count and active-high-touch-level > spore-count[
+              set contam-level (active-high-touch-level - spore-count)
+              ask patch-at-heading-and-distance 90 1 [set active-high-touch-level (active-high-touch-level + spore-count)]
+            ]
+          ]
         ]
       ]
     ]
     if random-num2 < low-touch-chance[
-      if low-touch-level > contam-level[ ;if there are more spores on the low-touch surface then HCW gain spores and low-touch loses spores
+      ifelse low-touch-level > contam-level[ ;if there are more spores on the low-touch surface then HCW gain spores and low-touch loses spores
         if contam-level > spore-count and active-high-touch-level > spore-count[
           set contam-level (active-low-touch-level + spore-count)
-          ask patch-at-heading-and-distance 9135 1 [set active-low-touch-level (active-low-touch-level - spore-count)]
+          ask patch-at-heading-and-distance 135 1 [set active-low-touch-level (active-low-touch-level - spore-count)]
         ]
-      ]
-      if low-touch-level < contam-level[ ;if there are less spores on the low-touch surgace then HCW loses spores and low-touch gains spores
-        if contam-level > spore-count and active-high-touch-level > spore-count[
-          set contam-level (active-low-touch-level - spore-count)
-          ask patch-at-heading-and-distance 9135 1 [set active-low-touch-level (active-low-touch-level + spore-count)]
+      ][
+        if low-touch-level < contam-level[ ;if there are less spores on the low-touch surgace then HCW loses spores and low-touch gains spores
+          if contam-level > spore-count and active-high-touch-level > spore-count[
+            set contam-level (active-low-touch-level - spore-count)
+            ask patch-at-heading-and-distance 135 1 [set active-low-touch-level (active-low-touch-level + spore-count)]
+          ]
         ]
       ]
     ]
@@ -869,6 +871,32 @@ to decontaminate-HCWs
     ]
   ]
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
