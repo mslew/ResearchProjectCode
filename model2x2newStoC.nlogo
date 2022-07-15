@@ -8,8 +8,19 @@ globals[
   hallways ;hallways patches
   HCW-spawn-patch ;hallways where the HCWs spawn
   time ;master time
-  number-discharges ;number of discharges
+  discharges ;number of discharges
   total-HCW-contam ;total HCW contamination
+  total-R ;total resistant patients
+  total-S ;total susceptible patients
+  total-C ;total colonized patients
+  total-D ;total diseased patients
+  total-high-touch ;total high-touch level
+  total-low-touch ;total low-touch level
+  S-to-C-high ;total number of patients getting sick from high-touch
+  S-to-C-low ;total number of patients getting sick from low-touch
+  admissions ;total number of admissions
+  total-C-hos ;total number of patients getting colonized while in hospital
+  days ;total number of days ran
 ]
 
 patients-own[
@@ -75,10 +86,15 @@ to go
     clean-high-touch
     discharge-patients
     admit-patients
+    set days (days + 1)
   ]
   ;add 15 to overall elapsed time
   set time (time + 15)
   update-time
+  plots
+  if days = 40[
+    stop
+  ]
   tick
 end
 
@@ -456,6 +472,8 @@ to susceptible-to-colonized
       set color blue
       set time-since-current-disease-status 0
       set new-disease-status "yes"
+      set S-to-C-high (S-to-C-high + 1)
+      set total-C-hos (total-C-hos + 1)
     ]
   ][
     if random-num2 < chance-from-low-touch[
@@ -463,6 +481,8 @@ to susceptible-to-colonized
       set color blue
       set time-since-current-disease-status 0
       set new-disease-status "yes"
+      set S-to-C-low (S-to-C-low + 1)
+      set total-C-hos (total-C-hos + 1)
     ]
   ]
 end
@@ -510,7 +530,7 @@ to discharge-patients
     ]
   ]
   ;display correct number
-  set number-discharges (number-discharges + number-of-D-patients-discharged + number-of-C-patients-discharged + number-of-S-patients-discharged + number-of-R-patients-discharged)
+  set discharges (discharges + number-of-D-patients-discharged + number-of-C-patients-discharged + number-of-S-patients-discharged + number-of-R-patients-discharged)
 
   ;discharge
   ask n-of number-of-D-patients-discharged patients with [disease-status-at-last-visit = "diseased"] [die]
@@ -532,6 +552,7 @@ to admit-patients
   let C-chance .15 ;colonized
   let D-chance .01 ;diseased
   let empty-rooms count patients-patch with [not any? patients-here]
+  set admissions (admissions + empty-rooms)
 
   create-patients empty-rooms[
     let random-num random-float 1
@@ -782,9 +803,10 @@ end
 
 ;this is the submodel for HCW's to shed spores on surfaces or gain spores depending on spore count
 to HCW-shed-contam ;HCW either gaines spores or sheds spores depending on amount
-  let high-touch-chance 47.12 / 96
-  let low-touch-chance 27.55 / 96
-  let spore-count 0.001
+  let high-touch-chance 47.12 / 96 ;touch rate per day
+  let low-touch-chance 27.55 / 96 ;touch rate per day
+  let spore-count-high 0.0015 ;spore transfer for high-touch surface
+  let spore-count-low 0.0074 ;spore transfer for low-touch surface
 
   ask HCWs with [any? patients-here][
     let random-num1 random-float 1
@@ -795,14 +817,14 @@ to HCW-shed-contam ;HCW either gaines spores or sheds spores depending on amount
     ask patch-at-heading-and-distance 135 1 [set low-touch-level active-low-touch-level]
     if random-num1 < high-touch-chance[ ;change this to if else
       if high-touch-level > contam-level[ ;if there are more spores on the high-touch surface then HCW gain spores and high-touch loses spores
-        ifelse contam-level > spore-count and active-high-touch-level > spore-count[ ;only transfer if surfaces have more spores than transfer rate
-          set contam-level (active-high-touch-level + spore-count)
-          ask patch-at-heading-and-distance 90 1 [set active-high-touch-level (active-high-touch-level - spore-count)]
+        ifelse contam-level > spore-count-high and active-high-touch-level > spore-count-high[ ;only transfer if surfaces have more spores than transfer rate
+          set contam-level (active-high-touch-level + spore-count-high)
+          ask patch-at-heading-and-distance 90 1 [set active-high-touch-level (active-high-touch-level - spore-count-high)]
         ][
           if high-touch-level < contam-level[ ;if there are less spores on the low-touch surface then HCW loses spores and high-touch gains spores
-            if contam-level > spore-count and active-high-touch-level > spore-count[
-              set contam-level (active-high-touch-level - spore-count)
-              ask patch-at-heading-and-distance 90 1 [set active-high-touch-level (active-high-touch-level + spore-count)]
+            if contam-level > spore-count-high and active-high-touch-level > spore-count-high[
+              set contam-level (active-high-touch-level - spore-count-high)
+              ask patch-at-heading-and-distance 90 1 [set active-high-touch-level (active-high-touch-level + spore-count-high)]
             ]
           ]
         ]
@@ -810,15 +832,15 @@ to HCW-shed-contam ;HCW either gaines spores or sheds spores depending on amount
     ]
     if random-num2 < low-touch-chance[
       ifelse low-touch-level > contam-level[ ;if there are more spores on the low-touch surface then HCW gain spores and low-touch loses spores
-        if contam-level > spore-count and active-high-touch-level > spore-count[
-          set contam-level (active-low-touch-level + spore-count)
-          ask patch-at-heading-and-distance 135 1 [set active-low-touch-level (active-low-touch-level - spore-count)]
+        if contam-level > spore-count-low and active-high-touch-level > spore-count-low[
+          set contam-level (active-low-touch-level + spore-count-low)
+          ask patch-at-heading-and-distance 135 1 [set active-low-touch-level (active-low-touch-level - spore-count-low)]
         ]
       ][
         if low-touch-level < contam-level[ ;if there are less spores on the low-touch surgace then HCW loses spores and low-touch gains spores
-          if contam-level > spore-count and active-high-touch-level > spore-count[
-            set contam-level (active-low-touch-level - spore-count)
-            ask patch-at-heading-and-distance 135 1 [set active-low-touch-level (active-low-touch-level + spore-count)]
+          if contam-level > spore-count-low and active-high-touch-level > spore-count-low[
+            set contam-level (active-low-touch-level - spore-count-low)
+            ask patch-at-heading-and-distance 135 1 [set active-low-touch-level (active-low-touch-level + spore-count-low)]
           ]
         ]
       ]
@@ -851,27 +873,36 @@ to decontaminate-HCWs
         set contam-level (contam-level - (contam-level * .2)) ;hand sanitizer
       ]
     ]
-    set total-HCW-contam sum [contam-level] of HCWs ;this is for the plot graph
   ]
 
   ;change color based on contam levels
   ask HCWs [
    ;here is the block for changing colors
-    if contam-level > 0 and contam-level <= 0.0005[
+    if contam-level > 0 and contam-level <= 0.005[
       set shape "face happy"
       ;set color 47 ;set HCW color to low level color 7
     ]
-    if contam-level > 0.0005 and contam-level <= 0.001[
+    if contam-level > 0.005 and contam-level <= 0.01[
       set shape "face neutral"
       ;set color 46 ;set HCW color to medium level color 6
     ]
-    if contam-level > 0.001[
+    if contam-level > 0.01[
       set shape "face sad"
       ;set color 45 ;set HCW color to high level color 5
     ]
   ]
 end
 
+;this submodel is used for plotting things at the interface
+to plots
+  set total-R count patients with [current-disease-status = "resistant"]
+  set total-S count patients with [current-disease-status = "susceptible"]
+  set total-C count patients with [current-disease-status = "colonized"]
+  set total-D count patients with [current-disease-status = "diseased"]
+  set total-high-touch sum [active-high-touch-level] of patches
+  set total-low-touch sum [active-low-touch-level] of patches
+  set total-HCW-contam sum [contam-level] of HCWs ;this is for the plot graph for total HCW contam
+end
 
 
 
@@ -1060,35 +1091,20 @@ NIL
 HORIZONTAL
 
 MONITOR
-9
-232
-165
-277
-number-of-discharges
-number-discharges
+601
+11
+735
+56
+discharges
+discharges
 17
 1
 11
 
-SLIDER
-9
-59
-219
-92
-HCW-decontam-rate
-HCW-decontam-rate
-0
-1
-0.01
-.01
-1
-NIL
-HORIZONTAL
-
 PLOT
 9
 283
-209
+260
 433
 total-HCW-contam-level
 NIL
@@ -1098,10 +1114,94 @@ NIL
 0.0
 0.05
 true
-false
+true
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plot total-HCW-contam"
+"HCW-contam" 1.0 0 -16777216 true "" "plot total-HCW-contam"
+
+PLOT
+267
+283
+467
+433
+patient-classes
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Resistant" 1.0 0 -10899396 true "" "plot total-R"
+"Susceptible" 1.0 0 -6459832 true "" "plot total-S"
+"Colonized" 1.0 0 -13345367 true "" "plot total-C"
+"Diseased" 1.0 0 -8630108 true "" "plot total-D"
+
+PLOT
+475
+283
+693
+433
+touch-surfaces-levels
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"High-touch" 1.0 0 -2674135 true "" "plot total-high-touch"
+"Low-touch" 1.0 0 -955883 true "" "plot total-low-touch"
+
+MONITOR
+456
+11
+590
+56
+NIL
+admissions
+17
+1
+11
+
+MONITOR
+456
+61
+533
+106
+NIL
+S-to-C-high
+17
+1
+11
+
+MONITOR
+540
+62
+612
+107
+NIL
+S-to-C-low
+17
+1
+11
+
+MONITOR
+620
+62
+695
+107
+NIL
+total-C-hos
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
