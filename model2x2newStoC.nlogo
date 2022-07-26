@@ -380,7 +380,7 @@ to high-touch-shedding
 
   if current-disease-status = "diseased"[
     if random-num < diseased-contacts-per-tick[
-      ask patch-at-heading-and-distance 90 1 [set active-high-touch-level active-high-touch-level + colonized-spores-per-contact] ;sets patch's level 1 grid east of patient
+      ask patch-at-heading-and-distance 90 1 [set active-high-touch-level active-high-touch-level + diseased-spores-per-contact] ;sets patch's level 1 grid east of patient
     ]
   ]
 
@@ -417,7 +417,7 @@ to low-touch-shedding
 
   if current-disease-status = "diseased"[
     if random-num < diseased-contacts-per-tick[
-      ask patch-at-heading-and-distance 135 1 [set active-low-touch-level active-low-touch-level + colonized-spores-per-contact] ;sets patch's level 1 grid southeast of patient. add more spores
+      ask patch-at-heading-and-distance 135 1 [set active-low-touch-level active-low-touch-level + diseased-spores-per-contact] ;sets patch's level 1 grid southeast of patient. add more spores
     ]
   ]
 
@@ -438,8 +438,8 @@ end
 
 ;cleaning high-touch. happens once a day. random percentage
 to clean-high-touch
-  let spores-killed-from-extra-cleaning .33 + (random-float (.99 - .33)) ;make the percentage of spores killed a random percentage in a range of .33-.99
-  ask high-touch [
+  ask high-touch[
+    let spores-killed-from-extra-cleaning (.33 + (random-float (.99 - .33))) ;make the percentage of spores killed a random percentage in a range of .33-.99
     set active-high-touch-level (active-high-touch-level - (active-high-touch-level * spores-killed-from-extra-cleaning))
   ]
 end
@@ -805,7 +805,7 @@ end
 to HCW-shed-contam ;HCW either gaines spores or sheds spores depending on amount
   let high-touch-chance 47.12 / 96 ;touch rate per day
   let low-touch-chance 27.55 / 96 ;touch rate per day
-  let spore-count-high 0.0015 ;spore transfer for high-touch surface
+  let spore-count-high 0.015 ;spore transfer for high-touch surface
   let spore-count-low 0.0074 ;spore transfer for low-touch surface
 
   ask HCWs with [any? patients-here][
@@ -903,7 +903,6 @@ to plots
   set total-low-touch sum [active-low-touch-level] of patches
   set total-HCW-contam sum [contam-level] of HCWs ;this is for the plot graph for total HCW contam
 end
-
 
 
 
